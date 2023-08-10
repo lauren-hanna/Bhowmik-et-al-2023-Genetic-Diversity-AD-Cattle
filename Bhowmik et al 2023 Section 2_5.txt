@@ -1,0 +1,284 @@
+#Bhowmik et al. 2023 Section 2.5 - Linkage Disequilibrium & Genotype Formatting
+
+#Calculating and Pruning Based on Pairwise LD
+## Demonstrating how LDpw.RData was created:
+
+### These steps are to be completed in PLINK 
+#### Note: This example is based on cattle, where PLINK's default is humans, 
+#### so the number of chromosomes have to be specified to override the human default number.
+
+### Steps to get pairwise LD:
+#### 1. Place .ped and .map files in folder with PLINK executable.
+##### Note: This would have been "AllComb11K" ped and map files.
+
+#### 2. Open command line and change directory (cd) to folder with files & executable
+
+#### 3. Change format into bed/bim files for R on entire marker set to be used later on. Run as:
+plink --file FileName --chr-set 29 --allow-extra-chr --make-bed --recode A --out NewFileName
+##### Note: This step created the Comb11K (or Comb11KFull.RData) bed, bim, and fam files used in later steps or scripts
+
+#### 4. ID markers in low LD...
+plink --file FileName --chr-set 29 --allow-extra-chr --indep-pairwise 50 5 0.1
+##### Generates "plink.prune.in" and "plink.prune.out" files
+
+#### 5. Prune off high LD markers..
+plink --file FileName --chr-set 29 --allow-extra-chr --extract plink.prune.in --make-bed --recode A --out NewFileName2
+##### Note: This step created the PrAllComb11K.bed, .bim, and .fam files used in later steps
+
+#### 6. Calculate LD as a matrix
+plink --file FileName --chr-set 29 --allow-extra-chr --r2 --matrix
+##### Generates "plinkr2_matrix.ld" file,
+
+#### 7. To save on memory and read-in time for R, the LDpw.RData file was created by
+#### reading the .ld file into R/RStudio and saved as RData file.
+
+##### R/RStudio #####
+##Note: makes sure R script in set or opened in the working directory of files being read in. Otherwise, adjust the path.
+
+# Summarizing pairwise LD
+## Demonstrating how LD.sum.RData was created:
+load("LDpw.RData") #assumes the RData file is in the current working directory.
+
+### Create objects to store summary data:
+count.LD = data.frame(Chr = rep(seq(1:29),each=2),
+                    Group = rep(c("Within","Across"),29),
+                    Thres01 = NA, Thres02 = NA, Thres03 = NA, Thres04 = NA, Thres05 = NA, Thres06 = NA, Thres07 = NA, Thres08 = NA, Thres09 = NA, Thres10 = NA)
+prop.LD = data.frame(Chr = rep(seq(1:29),each=2),
+                     Group = rep(c("Within","Across"),29),
+                     Thres01 = NA, Thres02 = NA, Thres03 = NA, Thres04 = NA, Thres05 = NA, Thres06 = NA, Thres07 = NA, Thres08 = NA, Thres09 = NA, Thres10 = NA)
+
+### Processing data and summarizing
+#### Note: due to the number of chromosomes and markers involved, this may take a few minutes to run.
+chr = array(c(1:29))
+for(i in chr){
+  imrkr = which(map$V1==i)
+  #Within chromosome...
+  iLDw = LDpw[imrkr,imrkr]
+  iLDw = array(iLDw[lower.tri(iLDw)])
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Within"),"Thres01"] = dim(array(iLDw[which(iLDw < 0.1)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Within"),"Thres02"] = dim(array(iLDw[which(iLDw < 0.2 & iLDw >= 0.1)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Within"),"Thres03"] = dim(array(iLDw[which(iLDw < 0.3 & iLDw >= 0.2)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Within"),"Thres04"] = dim(array(iLDw[which(iLDw < 0.4 & iLDw >= 0.3)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Within"),"Thres05"] = dim(array(iLDw[which(iLDw < 0.5 & iLDw >= 0.4)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Within"),"Thres06"] = dim(array(iLDw[which(iLDw < 0.6 & iLDw >= 0.5)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Within"),"Thres07"] = dim(array(iLDw[which(iLDw < 0.7 & iLDw >= 0.6)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Within"),"Thres08"] = dim(array(iLDw[which(iLDw < 0.8 & iLDw >= 0.7)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Within"),"Thres09"] = dim(array(iLDw[which(iLDw < 0.9 & iLDw >= 0.8)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Within"),"Thres10"] = dim(array(iLDw[which(iLDw >= 0.9)]))
+  prop.LD[which(prop.LD$Chr==i & prop.LD$Group=="Within"),3:12] = count.LD[which(count.LD$Chr==i & count.LD$Group=="Within"),3:12]/dim(iLDw)
+  
+  #Across other chromsomes...
+  iLDa = LDpw[-imrkr,imrkr]
+  iLDa = array(unlist(iLDa))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Across"),"Thres01"] = dim(array(iLDa[which(iLDa < 0.1)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Across"),"Thres02"] = dim(array(iLDa[which(iLDa < 0.2 & iLDa >= 0.1)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Across"),"Thres03"] = dim(array(iLDa[which(iLDa < 0.3 & iLDa >= 0.2)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Across"),"Thres04"] = dim(array(iLDa[which(iLDa < 0.4 & iLDa >= 0.3)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Across"),"Thres05"] = dim(array(iLDa[which(iLDa < 0.5 & iLDa >= 0.4)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Across"),"Thres06"] = dim(array(iLDa[which(iLDa < 0.6 & iLDa >= 0.5)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Across"),"Thres07"] = dim(array(iLDa[which(iLDa < 0.7 & iLDa >= 0.6)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Across"),"Thres08"] = dim(array(iLDa[which(iLDa < 0.8 & iLDa >= 0.7)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Across"),"Thres09"] = dim(array(iLDa[which(iLDa < 0.9 & iLDa >= 0.8)]))
+  count.LD[which(count.LD$Chr==i & count.LD$Group=="Across"),"Thres10"] = dim(array(iLDa[which(iLDa >= 0.9)]))
+  prop.LD[which(prop.LD$Chr==i & prop.LD$Group=="Across"),3:12] = count.LD[which(count.LD$Chr==i & count.LD$Group=="Across"),3:12]/dim(iLDa)
+}
+
+### Creating LD.sum list
+LD.sum = list(count.LD = count.LD, prop.LD = prop.LD)
+
+### How LD.sum.RData was created:
+#save(LD.sum,file=paste0(getwd(),"/LD.sum.RData"))
+#remove(iLDw,iLDa,LDpw,map,chr,i,imrkr,count.LD,prop.LD,LD.sum) #clean up environment
+
+# Demonstrating how genind and hierfstat RData files were created:
+## Adegenet Genind:
+### Full marker set, All populations
+Geno = plinkFile::readBED("AllComb11K",row=1,col=1)
+Map = plinkFile::readBIM("AllComb11K")
+Fam = plinkFile::readFAM("AllComb11K")
+
+#### Adding extra strata information to Fam object
+Fam$fid2 = NA
+Fam[which(Fam$fid%in%c("AD","ADI")),"fid2"]="AD"
+Fam[which(Fam$fid%in%c("AN","ANI")),"fid2"]="AN"
+Fam[which(Fam$fid%in%c("AR","ARI")),"fid2"]="AR"
+Fam[which(Fam$fid%in%c("GV","GVI")),"fid2"]="GV"
+Fam[which(Fam$fid%in%c("LM","LMI")),"fid2"]="LM"
+Fam[which(Fam$fid%in%c("SH","SHI")),"fid2"]="SH"
+Fam[which(Fam$fid%in%c("SM","SMI")),"fid2"]="SM"
+Fam[which(is.na(Fam$fid2)),"fid2"]=Fam[which(is.na(Fam$fid2)),"fid"]
+Fam$origin = NA
+Fam[which(Fam$fid2%in%c("AN","AR","HH","SH","F1BB")),"origin"]="UK"
+Fam[which(Fam$fid2%in%c("GV","LM","SM","F1CC")),"origin"]="EU"
+Fam[which(Fam$fid2=="AD"),"origin"]="AU"
+Fam[which(Fam$fid2%in%c("F1BC")),"origin"]="Mix"
+Fam$strata = paste0(Fam$origin,"_",Fam$fid2,"_",Fam$fid)
+
+#### Creating purebred only subset
+PB = c("AD","AN","AR","HH","GV","LM","SH","SM")
+PB.only = array(Fam[which(Fam$fid%in%PB),"iid"])
+GenoPB = Geno[which(row.names(Geno)%in%PB.only),]
+
+library(adegenet)
+#### For adegenet genind on full marker set with all populations
+Geno2 = Geno
+for(j in 1:dim(Map)[1]){
+  Geno[which(Geno[,Map[j,"id"]]==0),Map[j,"id"]]=paste0(Map[j,"a1"],Map[j,"a1"])
+  Geno[which(Geno[,Map[j,"id"]]==1),Map[j,"id"]]=paste0(Map[j,"a1"],Map[j,"a2"])
+  Geno[which(Geno[,Map[j,"id"]]==2),Map[j,"id"]]=paste0(Map[j,"a2"],Map[j,"a2"])
+}
+GenoA.F = df2genind(Geno,sep="",ploidy = 2,ind.names = as.character(Fam$iid),pop = as.character(Fam$fid),strata=data.frame(Fam$strata))
+splitStrata(GenoA.F)= ~Origin/Pop/Subpop
+
+#### For adegenet genind on full marker set with purebred only populations
+Geno2 = GenoPB
+for(j in 1:dim(Map)[1]){
+  GenoPB[which(GenoPB[,Map[j,"id"]]==0),Map[j,"id"]]=paste0(Map[j,"a1"],Map[j,"a1"])
+  GenoPB[which(GenoPB[,Map[j,"id"]]==1),Map[j,"id"]]=paste0(Map[j,"a1"],Map[j,"a2"])
+  GenoPB[which(GenoPB[,Map[j,"id"]]==2),Map[j,"id"]]=paste0(Map[j,"a2"],Map[j,"a2"])
+}
+GenoA.FPB = df2genind(GenoPB,sep="",ploidy = 2,ind.names = row.names(GenoPB),pop = Fam[which(Fam$iid %in% PB.only),"fid"],strata=data.frame(Strata=Fam[which(Fam$iid %in% PB.only),"strata"]))
+splitStrata(GenoA.FPB)= ~Origin/Pop/Subpop
+remove(Geno,Geno2,GenoPB,j,Map) #some objects not removed so it can be used later
+
+### Pruned marker set, all populations
+Geno = plinkFile::readBED("PrAllComb11K",row=1,col=1)
+Map = plinkFile::readBIM("PrAllComb11K")
+#### Note: Fam object remains the same, no update here.
+
+#### Creating purebred only subset
+GenoPB = Geno[which(row.names(Geno)%in%PB.only),] #PB.only from earlier
+
+#### For adegenet genind on full marker set with all populations
+Geno2 = Geno
+for(j in 1:dim(Map)[1]){
+  Geno[which(Geno[,Map[j,"id"]]==0),Map[j,"id"]]=paste0(Map[j,"a1"],Map[j,"a1"])
+  Geno[which(Geno[,Map[j,"id"]]==1),Map[j,"id"]]=paste0(Map[j,"a1"],Map[j,"a2"])
+  Geno[which(Geno[,Map[j,"id"]]==2),Map[j,"id"]]=paste0(Map[j,"a2"],Map[j,"a2"])
+}
+GenoA.Pr = df2genind(Geno,sep="",ploidy = 2,ind.names = row.names(Geno),pop = as.character(Fam$fid),strata=data.frame(Fam$strata))
+splitStrata(GenoA.Pr)= ~Origin/Pop/Subpop
+
+#### For adegenet genind on full marker set with purebred only populations
+Geno2 = GenoPB
+for(j in 1:dim(Map)[1]){
+  GenoPB[which(GenoPB[,Map[j,"id"]]==0),Map[j,"id"]]=paste0(Map[j,"a1"],Map[j,"a1"])
+  GenoPB[which(GenoPB[,Map[j,"id"]]==1),Map[j,"id"]]=paste0(Map[j,"a1"],Map[j,"a2"])
+  GenoPB[which(GenoPB[,Map[j,"id"]]==2),Map[j,"id"]]=paste0(Map[j,"a2"],Map[j,"a2"])
+}
+GenoA.PrPB = df2genind(GenoPB,sep="",ploidy = 2,ind.names = row.names(GenoPB),pop = Fam[which(Fam$iid %in% PB.only),"fid"],strata=data.frame(Strata=Fam[which(Fam$iid %in% PB.only),"strata"]))
+splitStrata(GenoA.PrPB)= ~Origin/Pop/Subpop
+
+### How Genos_AdegenetFormat.RData was created:
+#save(GenoA.F,GenoA.FPB,GenoA.Pr, GenoA.PrPB,file = paste0(getwd(),"/Genos_AdegenetFormat.RData"))
+#remove(Geno,Geno2,GenoPB,j)
+
+## Hierfstat dataframes:
+library(hierfstat)
+### Use Adegenet function:
+GenoH.F = genind2df(GenoA.F) #all markers, all populations
+GenoH.FPB = genind2df(GenoA.FPB) #all markers, purebred only
+GenoH.Pr = genind2df(GenoA.Pr) #pruned markers, all populations
+GenoH.PrPB = genind2df(GenoA.PrPB) #pruned markers, purebred only
+
+### Create table with allele codes for reformatting:
+allele.code = data.frame(Allele = c("A","C","G","T"),Code = 1:4)
+
+### Reformat for "all markers" sets:
+Map = plinkFile::readBIM("AllComb11K")
+for(j in 1:dim(Map)[1]){
+  m.code = allele.code[which(allele.code$Allele%in%Map[j,c("a1","a2")]),]
+  m.genos = array(sort(unique(GenoH.F[,Map[j,"id"]])))
+  GenoH.F[which(GenoH.F[,Map[j,"id"]]==m.genos[1]),Map[j,"id"]]=paste0(m.code[1,"Code"],m.code[1,"Code"])
+  GenoH.F[which(GenoH.F[,Map[j,"id"]]==m.genos[2]),Map[j,"id"]]=paste0(m.code[1,"Code"],m.code[2,"Code"])
+  GenoH.F[which(GenoH.F[,Map[j,"id"]]==m.genos[3]),Map[j,"id"]]=paste0(m.code[2,"Code"],m.code[2,"Code"])
+  GenoH.F[,Map[j,"id"]]=as.integer(GenoH.F[,Map[j,"id"]])
+  
+  GenoH.FPB[which(GenoH.FPB[,Map[j,"id"]]==m.genos[1]),Map[j,"id"]]=paste0(m.code[1,"Code"],m.code[1,"Code"])
+  GenoH.FPB[which(GenoH.FPB[,Map[j,"id"]]==m.genos[2]),Map[j,"id"]]=paste0(m.code[1,"Code"],m.code[2,"Code"])
+  GenoH.FPB[which(GenoH.FPB[,Map[j,"id"]]==m.genos[3]),Map[j,"id"]]=paste0(m.code[2,"Code"],m.code[2,"Code"])
+  GenoH.FPB[,Map[j,"id"]]=as.integer(GenoH.FPB[,Map[j,"id"]])
+}
+
+### Reformat for "pruned markers" sets:
+Map = plinkFile::readBIM("PrAllComb11K")
+for(j in 1:dim(Map)[1]){
+  m.code = allele.code[which(allele.code$Allele%in%Map[j,c("a1","a2")]),]
+  m.genos = array(sort(unique(GenoH.Pr[,Map[j,"id"]])))
+  GenoH.Pr[which(GenoH.Pr[,Map[j,"id"]]==m.genos[1]),Map[j,"id"]]=paste0(m.code[1,"Code"],m.code[1,"Code"])
+  GenoH.Pr[which(GenoH.Pr[,Map[j,"id"]]==m.genos[2]),Map[j,"id"]]=paste0(m.code[1,"Code"],m.code[2,"Code"])
+  GenoH.Pr[which(GenoH.Pr[,Map[j,"id"]]==m.genos[3]),Map[j,"id"]]=paste0(m.code[2,"Code"],m.code[2,"Code"])
+  GenoH.Pr[,Map[j,"id"]]=as.integer(GenoH.Pr[,Map[j,"id"]])
+
+  GenoH.PrPB[which(GenoH.PrPB[,Map[j,"id"]]==m.genos[1]),Map[j,"id"]]=paste0(m.code[1,"Code"],m.code[1,"Code"])
+  GenoH.PrPB[which(GenoH.PrPB[,Map[j,"id"]]==m.genos[2]),Map[j,"id"]]=paste0(m.code[1,"Code"],m.code[2,"Code"])
+  GenoH.PrPB[which(GenoH.PrPB[,Map[j,"id"]]==m.genos[3]),Map[j,"id"]]=paste0(m.code[2,"Code"],m.code[2,"Code"])
+  GenoH.PrPB[,Map[j,"id"]]=as.integer(GenoH.PrPB[,Map[j,"id"]])
+}
+
+### How Genos_HeirfstatFormat.RData was created:
+#save(GenoH.F,GenoH.FPB,GenoH.Pr, GenoH.PrPB,file = paste0(getwd(),"/Genos_HierfstatFormat.RData"))
+#remove(allele.code,j,m.code,m.genos,Map)
+#remove(GenoA.F,GenoA.FPB,GenoA.Pr,GenoA.PrPB,GenoH.F,GenoH.FPB,GenoH.Pr,GenoH.PrPB)
+
+## Make haploid state genind for AMOVA:
+### Note: Only pruned marker sets are used for this step.
+Geno = plinkFile::readBED("PrAllComb11K",row=1,col=1)
+Map = plinkFile::readBIM("PrAllComb11K")
+### Note: Fam object remains the same, no update here.
+
+### Creating purebred only subset
+#PB = c("AD","AN","AR","HH","GV","LM","SH","SM") #set up earlier
+#PB.only = array(Fam[which(Fam$fid%in%PB),"iid"]) #set up earlier
+GenoPB = Geno[which(row.names(Geno)%in%PB.only),]
+
+### Creating adjusted strata with individual ID added:
+strata = data.frame(rbind(Fam[,c("origin","fid2","fid","iid")],Fam[,c("origin","fid2","fid","iid")]))
+strata = strata[order(strata$iid),]
+row.names(strata) = NULL
+
+### Creating genind formats for all populations:
+GenoP.Pr = matrix(NA,nrow=dim(strata)[1],ncol=dim(Geno)[2])
+colnames(GenoP.Pr) = colnames(Geno)
+for(j in 1:dim(Map)[1]){
+  #A1A1
+  ID = row.names(Geno[which(Geno[,Map[j,"id"]]==0),])
+  idx = which(strata$iid%in%ID)
+  GenoP.Pr[idx,Map[j,"id"]] = Map[j,"a1"]
+  
+  #A1A2
+  ID = row.names(Geno[which(Geno[,Map[j,"id"]]==1),])
+  idx = which(strata$iid%in%ID)
+  GenoP.Pr[idx,Map[j,"id"]] = c(Map[j,"a1"],Map[j,"a2"])
+                                
+  #A2A2
+  ID = row.names(Geno[which(Geno[,Map[j,"id"]]==2),])
+  idx = which(strata$iid%in%ID)
+  GenoP.Pr[idx,Map[j,"id"]] = Map[j,"a2"]
+}
+GenoPA.Pr = df2genind(GenoP.Pr,ploidy = 1,pop = strata$fid,strata=strata)
+
+### Creating genind formats for purebred populations:
+strataPB = strata[which(strata$iid%in%PB.only),c("origin","fid","iid")]
+GenoPPB.Pr = matrix(NA,nrow=dim(strataPB)[1],ncol=dim(GenoPB)[2])
+colnames(GenoPPB.Pr) = colnames(GenoPB)
+for(j in 1:dim(Map)[1]){
+  #A1A1
+  ID = row.names(GenoPB[which(GenoPB[,Map[j,"id"]]==0),])
+  idx = which(strataPB$iid%in%ID)
+  GenoPPB.Pr[idx,Map[j,"id"]] = Map[j,"a1"]
+  
+  #A1A2
+  ID = row.names(GenoPB[which(GenoPB[,Map[j,"id"]]==1),])
+  idx = which(strataPB$iid%in%ID)
+  GenoPPB.Pr[idx,Map[j,"id"]] = c(Map[j,"a1"],Map[j,"a2"])
+  
+  #A2A2
+  ID = row.names(GenoPB[which(GenoPB[,Map[j,"id"]]==2),])
+  idx = which(strataPB$iid%in%ID)
+  GenoPPB.Pr[idx,Map[j,"id"]] = Map[j,"a2"]
+}
+GenoPA.PrPB = df2genind(GenoPPB.Pr,ploidy = 1,pop = strataPB$fid,strata=strataPB)
+
+### How Genos_HaploidGenind.RData was created:
+#save(GenoPA.Pr,GenoPA.PrPB,file=paste0(getwd(),"/Genos_HaploidGenind.RData"))

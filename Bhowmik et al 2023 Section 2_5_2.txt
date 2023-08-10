@@ -1,0 +1,186 @@
+#Bhowmik et al. 2023 Section 2.5.2 - Interpopulation Measures
+
+# Basic distance statistics
+## Demonstrating how GDIST.RData was created:
+library(hierfstat)
+load("Genos_HierfstatFormat.RData") #brings in 4 Hierfstat variables as described in manuscript, file not provided
+
+### Note: the following analyses can take several hours to run, particularly the "Beta" analysis
+### Full marker dataset
+#### Purebreds only
+Genet.Dist.FPB = list(Ds = genet.dist(GenoH.FPB,method = "Ds"),
+                        Dch = genet.dist(GenoH.FPB,method = "Dch"),
+                        D.Fst = genet.dist(GenoH.FPB,method = "Fst"))
+Fst.FPB = list(WC = pairwise.WCfst(GenoH.FPB),
+                 Nei = pairwise.neifst(GenoH.FPB),
+                 Beta = betas(GenoH.FPB,nboot=100))
+GDIST.FPB = list(Genet.Dist.FPB=Genet.Dist.FPB,Fst.FPB=Fst.FPB)
+remove(Genet.Dist.FPB,Fst.FPB)
+
+#### All populations
+Genet.Dist.F = list(Ds = genet.dist(GenoH.F,method = "Ds"),
+                  Dch = genet.dist(GenoH.F,method = "Dch"),
+                  D.Fst = genet.dist(GenoH.F,method = "Fst")) 
+Fst.F = list(WC = pairwise.WCfst(GenoH.F),
+               Nei = pairwise.neifst(GenoH.F),
+               Beta = betas(GenoH.F,nboot=100))
+            #Note: dosage data does not result in different values
+GDIST.F = list(Genet.Dist.F=Genet.Dist.F,Fst.F=Fst.F)
+remove(Genet.Dist.F,Fst.F)
+
+### Pruned marker dataset
+#### Purebred only
+Genet.Dist.PrPB = list(Ds = genet.dist(GenoH.PrPB,method = "Ds"),
+                         Dch = genet.dist(GenoH.PrPB,method = "Dch"),
+                         D.Fst = genet.dist(GenoH.PrPB,method = "Fst")) 
+Fst.PrPB = list(WC = pairwise.WCfst(GenoH.PrPB),
+                  Nei = pairwise.neifst(GenoH.PrPB),
+                  Beta = betas(GenoH.PrPB,nboot=100))
+GDIST.PrPB = list(Genet.Dist.PrPB=Genet.Dist.PrPB,Fst.PrPB=Fst.PrPB)
+remove(Genet.Dist.PrPB,Fst.PrPB)
+
+#### All populations
+Genet.Dist.Pr = list(Ds = genet.dist(GenoH.Pr,method = "Ds"),
+                        Dch = genet.dist(GenoH.Pr,method = "Dch"),
+                        D.Fst = genet.dist(GenoH.Pr,method = "Fst")) 
+Fst.Pr = list(WC = pairwise.WCfst(GenoH.Pr),
+                 Nei = pairwise.neifst(GenoH.Pr),
+                 Beta = betas(GenoH.Pr,nboot=100))
+GDIST.Pr = list(Genet.Dist.Pr=Genet.Dist.Pr,Fst.Pr=Fst.Pr)
+remove(Genet.Dist.Pr,Fst.Pr)
+
+### Creating overarching list:
+GDIST = list(GDIST.F=GDIST.F,GDIST.FPB=GDIST.FPB,GDIST.Pr=GDIST.Pr,GDIST.PrPB=GDIST.PrPB)
+
+### How GDIST.RData was created:
+#save(GDIST,file = paste0(getwd(),"/Output/GDIST.RData"))
+#remove(GDIST.F,GDIST.FPB,GDIST.Pr,GDIST.PrPB,GDIST)
+
+# Advanced genetic structure analyses
+## Demonstrating how AMOVAout_All.RData, AMOVAout_PB.RDATA, and AMOVA_PB_1Krep.RData were created:
+library(poppr) #to conduct AMOVA using poppr wrapper
+load("Genos_HaploidGenind.RData") #brings in 2 haploid genind variables as described in manuscript, file not provided
+
+### All populations
+amova.F = poppr.amova(GenoPA.Pr,~origin/fid2/fid/iid,within=FALSE) #8.63 min for one run
+set.seed(1999)
+sig.amova.F = randtest(amova.F,nrepet = 500) #took 2.1 days to run
+
+#### Creating list:
+out.amova.F = list(amova.F = amova.F, sig.amova.F = sig.amova.F)
+
+#### How AMOVAout_All.RData was created:
+#save(out.amova.F,file=paste0(getwd(),"/Output/AMOVAout_All.RData"))
+
+### Purebred only, 500 repetitions
+amova.FPB = poppr.amova(GenoPA.PrPB,~origin/fid/iid,within=FALSE) #1.13 min for one run
+set.seed(1999)
+sig.amova.FPB = randtest(amova.FPB,nrepet = 500) #took only 32.64 mins
+
+#### Creating list:
+out.amova.FPB = list(amova.FPB = amova.FPB, sig.amova.FPB = sig.amova.FPB)
+
+#### How AMOVAout_PB.RData was created:
+#save(out.amova.FPB,file=paste0(getwd(),"/Output/AMOVAout_PB.RData"))
+
+### Purebred only, 1000 repetitions
+set.seed(1999)
+sig.amova.FPBv2 = randtest(amova.FPB,nrepet = 1000)
+
+#### How AMOVAout_PB_1Krep.RData was created:
+#save(sig.amova.FPBv2,file=paste0(getwd(),"/Output/AMOVAout_PB_1Krep.RData"))
+
+# DAPC
+## Demonstrating how GL.PCA.RData was created:
+load("Genos_AdegenetFormat.RData") #brings in 4 genind diploid variables, file not provided
+remove(GenoA.F,GenoA.FPB) #only need pruned marker sets
+
+### Purebreds only
+#### PCA using genlight object on dataset and identifying variance explained
+library(dartR)
+GL.PrPB = gi2gl(GenoA.PrPB)
+pca.out = glPca(GL.PrPB) #keep all PC, enter 404 to get 398 axis out
+404 #keep all axes, 398 axes actually retained
+
+#### Proportion of variation explained per axis
+prop.var = eig/sum(eig)
+prop.var[1:7] # demonstrating proportion variance in first seven axes
+
+#### Total variation explained in first seven axes
+tot.first7 = sum(prop.var[1:7])*100
+tot.first7 # 17.44% variation explained
+
+#### Creating list & cleaning up environment:
+PrPB.PCA = list(pca.out = pca.out, prop.var=prop.var, tot.first7 = tot.first7)
+remove(GL.PrPB,pca.out,prop.var,tot.first7,tot.first4)
+
+### All populations
+#### PCA using genlight object on dataset and identifying variance explained
+GL.Pr = gi2gl(GenoA.Pr)
+pca.out2 = glPca(GL.Pr) 
+1140 #keep all PC, enter 1140 to get 1134 axis out
+
+#### Proportion of variation explained per axis
+prop.var2 = eig2/sum(eig2)
+prop.var2[1:10] #11 groups if absorbing I into purebreds
+
+#### Total variation explained in first ten axes
+tot2.first10 = sum(prop.var2[1:10])*100
+tot2.first10 #15.35% explained
+##### Note: only the first 3 add more than 1% explained var to PCA
+
+#### Creating list & cleaning up environment:
+Pr.PCA = list(pca.out = pca.out2, prop.var=prop.var2, tot.first10 = tot2.first10)
+remove(GL.Pr,pca.out2,prop.var2,tot2.first10)
+
+### How GL.PCA.RData was created:
+#save(Pr.PCA,PrPB.PCA,file=paste0(getwd(),"/GL.PCA.RData"))
+#remove(Pr.PCA,PrPB.PCA)
+
+## Demonstrating how FindClusters.RData was created:
+### Purebreds only
+PBonly = find.clusters(GenoA.PrPB,n.iter=1e6,n.start = 20,
+                    choose.n.clust=FALSE,criterion="smoothNgoesup")
+404  #kept 404 PC
+
+### All populations
+All = find.clusters(GenoA.Pr,n.iter=1e6,n.start = 20,
+                            choose.n.clust=FALSE,criterion="smoothNgoesup")
+1140    #kept 1140 PC
+
+### How FindClusters.RData was created:
+#save(PBonly,All, file = paste0(getwd(),"/FindClusters.RData"))
+#remove(PBonly,All)
+
+## Demonstrating how DAPC_CV_PBonly.RData was created:
+### Note: Purebred only
+### Test if default parameters fit the situation:
+set.seed(999)
+PBx = xvalDapc(GenoA.PrPB@tab,pop(GenoA.PrPB)) 
+
+### Note: 50 PC (default) already at 100%, need to test lower PC number:
+set.seed(999)
+PBx2 = xvalDapc(GenoA.PrPB@tab,pop(GenoA.PrPB),
+                n.pca = 1:30,n.rep = 1000,
+               parallel = "snow",ncpus=4L) #35.48 minutes to run
+### Note: an older run using n.rep = 2000 is ~1.87 hrs and does not change outcomes
+
+### How DAPC_CV_PBonly.RData was created:
+#save(PBx2,file=paste0(getwd(),"/DAPC_CV_PBonly.RData"))
+#remove(PBx,PBx2)
+
+## Demonstrating how DAPC_CV_All.RData was created:
+### Note: All populations
+### Test if default parameters fit the situation:
+set.seed(999)
+Allx = xvalDapc(GenoA.Pr@tab,pop(GenoA.Pr)) 
+
+### Note 100 PC already at highest %, will need to keep default number:
+set.seed(999)
+Allx2 = xvalDapc(GenoA.Pr@tab,pop(GenoA.Pr),
+                     n.pca = 1:100,n.rep = 1000,
+                     parallel = "snow",ncpus=4L)
+
+### How DAPC_CV_Allv2.RData was created:
+#save(Allx2,file=paste0(getwd(),"/DAPC_CV_Allv2.RData"))
+#remove(Allx,Allx2)

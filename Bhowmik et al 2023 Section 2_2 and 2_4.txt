@@ -1,0 +1,272 @@
+#Bhowmik et al. 2023 Section 2.2 & 2.4 - Genotype Preparation and Creation of Ped and Map Files
+
+# Demonstrating how AllComb11K ped and map files were created:
+## Note: assumes working directory is the same folder as these files are located
+## Note 2: DREC files referenced for Geno and Map were formatted based on combining 100K and 150K genotype sets.
+library(data.table)
+Geno = fread("DRECComb_67K.txt",header=TRUE,check.names=FALSE) #File not provided
+Map = read.table("GGPComb_Master_UCD12.txt",header=TRUE) #File not provided
+
+## Transposing genotypes
+GenoT = t(Geno[,2:dim(Geno)[2]])
+colnames(GenoT)=Geno$Name
+GenoT = GenoT[,Map$Name]
+GenoT = as.data.table(GenoT)
+
+## Getting marker names ready to have two columns per marker
+markers = array(Map[,"Name"])
+nmarkers = dim(markers)
+newmarkers = array(NA,dim=2*nmarkers)
+j = 1
+for(i in 1:nmarkers){
+  newmarkers[j:(j+1)]=c(paste0(markers[i],"_1"),paste0(markers[i],"_2"))
+  j = j+2
+}
+remove(i,j)
+
+## Splitting genotypes
+GenoS = do.call(cbind,
+                lapply(GenoT[,1:nmarkers],
+                       function(i) do.call(rbind,strsplit(as.character(i),split="")
+                       )
+                )
+)
+
+## Replacing missing values with plink "no call" value
+GenoS[GenoS=="-"]=0
+
+## Finalizing object with names
+GenoSS = cbind(data.table(colnames(Geno[,2:dim(Geno)[2]])),GenoS)
+colnames(GenoSS)=c("ID",newmarkers)
+remove(Geno,GenoT,GenoS,markers,nmarkers)
+
+## Making .ped file by combining .fam with genotypes
+fam = read.table("DRECcattle_updated.fam",header=FALSE) #File not provided
+ped = merge(fam,GenoSS,by.x="V2",by.y="ID",all.x=TRUE) #removes 3 heterozygous, 8 Parentage issue animals
+ped = ped[,c("V1","V2","V3","V4","V5","V6",newmarkers)]
+
+## Making .map file by reorganizing and adding info
+Map = cbind(Map,0)
+map = Map[,c("Chr","Name","0","Pos")]
+
+fwrite(ped,"DRECcattle_updated.ped",quote=FALSE,sep=" ",row.names=FALSE,col.names=FALSE)
+write.table(map,"DRECcattle_updated.map",quote=FALSE,sep=" ",row.names=FALSE,col.names=FALSE)
+remove(GenoSS,ped,fam,Map,map,newmarkers)
+
+## Combining DREC and WIDDE populations:
+### Reading both in as snpMatrix, subsetting WIDDE, then combining
+library(snpStats)
+WIDDE = read.pedfile(file=paste0(getwd(),"/WIDDE.ped"),n=286,snps=paste0(getwd(),"/WIDDE.map")) #File not provided
+DREC = read.pedfile(file=paste0(getwd(),"/DRECcattle_updated.ped"),n=854,snps=paste0(getwd(),"/DRECcattle_updated.map")) #File not provided
+
+### Identifying possible allele problems
+no.data = DREC$map[which(is.na(DREC$map$allele.1) & is.na(DREC$map$allele.2)),] #31 markers no genotypes
+mono.snp = DREC$map[which(is.na(DREC$map$allele.2) & !(is.na(DREC$map$allele.1))),] #198 markers without both alleles
+remove.snp = array(unique(c(no.data$snp.names,mono.snp$snp.names))) #229 SNP
+
+DRECredmap = DREC$map[which(!(DREC$map$snp.names%in%remove.snp)),] #67114 SNP
+DRECredmap = DRECredmap[which(DRECredmap$snp.names%in%WIDDE$map$snp.names),] #26839
+
+WIDDEmapred = WIDDE$map[which(WIDDE$map$snp.names%in%DRECredmap$snp.names),]
+no.data = WIDDEmapred[which(is.na(WIDDEmapred$allele.1) & is.na(WIDDEmapred$allele.2)),] #0 markers
+mono.snp = WIDDEmapred[which(is.na(WIDDEmapred$allele.2) & !(is.na(WIDDEmapred$allele.1))),] #45 markers
+remove.snp = array(unique(c(no.data$snp.names,mono.snp$snp.names))) #45 SNP
+
+DRECredmap = DRECredmap[which(!(DRECredmap$snp.names%in%remove.snp)),] #26794 SNP
+WIDDEmapred = WIDDEmapred[which(!(WIDDEmapred$snp.names%in%remove.snp)),]
+
+### creating matching genotype sets
+DRECred = DREC$genotypes[,which(colnames(DREC$genotypes)%in%DRECredmap$snp.names)]
+WIDDEred = WIDDE$genotypes[,which(colnames(WIDDE$genotypes)%in%WIDDEmapred$snp.names)]
+
+remove(mono.snp,no.data,remove.snp)
+
+### Confirming allele switch before changing them:
+check = merge(DRECredmap,WIDDEmapred,by="snp.names",all=TRUE)
+nmarkers = dim(check)[1]
+for(i in 1:nmarkers){
+  if(check[i,"allele.1.x"]==check[i,"allele.1.y"] & check[i,"allele.2.x"]==check[i,"allele.2.y"]){
+    check[i,"check"]="c"
+  }else{
+    if(check[i,"allele.1.x"]==check[i,"allele.2.y"] & check[i,"allele.2.x"]==check[i,"allele.1.y"]){
+      check[i,"check"]="s"
+    }else{
+      check[i,"check"]="i"
+    }
+  }
+}
+
+dim(check[which(check$check!="c"),])[1] #9859 markers
+issues = check[which(check$check=="i"),] #0 markers
+switch = check[which(check$check=="s"),] #9859 markers
+
+Compare = col.summary(WIDDEred[,which(colnames(WIDDEred)%in%switch$snp.names)])
+summary(Compare)
+WIDDEfix = switch.alleles(WIDDEred,snps=switch$snp.names)
+Compare2 = col.summary(WIDDEfix[,which(colnames(WIDDEfix)%in%switch$snp.names)])
+summary(Compare2)
+#### It Worked!
+remove(Compare,Compare2,issues,switch,nmarkers,i)
+
+### Combining sets based on UCD 1.2 map coordinates
+Comb = rbind(WIDDEfix[,DRECredmap$snp.names],DRECred[,DRECredmap$snp.names])
+remove(check,DRECred,WIDDEred,WIDDEfix,WIDDEmapred)
+
+### Checking marker call rates
+mrkr.stats = col.summary(Comb)
+lwCRmrkr = mrkr.stats[which(mrkr.stats$Call.rate<0.75),] #333 markers, removing before proceeding
+Comb = Comb[,which(!(colnames(Comb)%in%row.names(lwCRmrkr)))]
+mrkr.stats = col.summary(Comb)
+
+### Getting rid of MAF < 0.05
+lwMAFmrkr = mrkr.stats[which(mrkr.stats$MAF<0.05),] #600 markers, removing before proceeding
+Comb = Comb[,which(!(colnames(Comb)%in%row.names(lwMAFmrkr)))]
+mrkr.stats = col.summary(Comb)
+
+DRECredmap = DRECredmap[which(DRECredmap$snp.names%in%row.names(mrkr.stats)),]
+remove(lwCRmrkr,lwMAFmrkr,mrkr.stats)
+
+### Checking animal stats
+anim.stats = row.summary(Comb)
+lwCRanim = anim.stats[which(anim.stats$Call.rate<0.75),] #0 animals 
+remove(lwCRanim,anim.stats)
+
+### Updating family info
+fam = rbind(WIDDE$fam,DREC$fam)
+fam[which(is.na(fam$sex)),"sex"]=1
+
+### Updating population codes in WIDDE population
+fam[which(fam$pedigree=="GBV"),"pedigree"]="GV"
+fam[which(fam$pedigree=="ANG"),"pedigree"]="AN"
+fam[which(fam$pedigree=="RGU"),"pedigree"]="AR"
+fam[which(fam$pedigree=="HFD"),"pedigree"]="HH"
+fam[which(fam$pedigree=="LMS"),"pedigree"]="LM"
+fam[which(fam$pedigree=="SIM"),"pedigree"]="SM"
+
+save(Comb,Map=DRECredmap,fam,file=paste0(getwd(),"/Comb25K.RData"))
+
+### Reducing based on Call rate per population
+#### Checking summary statistics per population
+load("Comb25K.RData")
+pop = array(c("AD","AN","AR","GV","HH","LM","SH","SM",
+              "ADI","ANI","ARI","GVI","LMI","SHI","SMI","F1BB",
+              "F1BC","F1CC"))
+for(i in pop){
+  animals = array(fam[which(fam$pedigree==i),"member"])
+  s.mkr = Comb[which(row.names(Comb)%in%animals),]
+  s.stats = col.summary(s.mkr)
+  if(which(pop==i)==1){
+    CR = s.stats[,"Call.rate",drop=FALSE]
+    MISS = 1-s.stats[,"Call.rate",drop=FALSE]
+  }else{
+    CR = cbind(CR,s.stats[,"Call.rate",drop=FALSE])
+    MISS = cbind(MISS,1-s.stats[,"Call.rate",drop=FALSE])
+  }
+}
+colnames(CR)=pop
+colnames(MISS)=pop
+MISS$ALL = NA
+
+#### Identifying which markers have all populations with CR at designated level
+for(i in 1:dim(MISS)[1]){
+  z=MISS[i,1:18]<=0.1 #CR at 90%
+  if(length(z[which(z==TRUE)])==18){
+    MISS[i,"ALL"]="YES"
+  }else{
+    MISS[i,"ALL"]="NO"
+  }
+}
+
+VARY = MISS[which(MISS$ALL=="NO"),]
+for(i in 1:(dim(MISS)[2]-1)){
+  print(paste(pop[i]," ",length(MISS[which(MISS[,i]>0.05),i])))
+}
+
+for(i in 1:dim(MISS)[1]){
+  z=MISS[i,1:18]<=0.05 #CR at 95%
+  if(length(z[which(z==TRUE)])==18){
+    MISS[i,"ALL2"]="YES"
+  }else{
+    MISS[i,"ALL2"]="NO"
+  }
+}
+
+keep = array(row.names(MISS[which(MISS$ALL2=="YES"),])) #Keep those with CR at 95%
+Comb = Comb[,which(colnames(Comb)%in%keep)] #Subsetted marker set
+
+#### Imputing missing gentoypes with average (0,1,2 options) per population
+for(i in keep){
+  #checking there are NA in marker period
+  if(dim(array(which(is.na(Comb[,i]))))==0){next}else{
+    #missing genotypes are present, now to fill them...
+    for(j in pop){
+      animals = array(fam[which(fam$pedigree==j),"member"])
+      s.mkr = Comb[which(row.names(Comb)%in%animals),]
+      #checking if this population has the missing genotype(s)
+      if(dim(array(which(is.na(s.mkr[,i]))))==0){next}else{
+        #missing genotypes are present, now to fill them...
+        miss = array(row.names(s.mkr[which(is.na(s.mkr[,i])),]))
+        avg = round(mean(as(s.mkr[,i],"numeric"),na.rm=TRUE),0)
+        Comb[miss,i]=as(matrix(avg,nrow=dim(miss),ncol=1,dimnames = list(miss,i)),"SnpMatrix")
+      }
+    }
+  }
+}
+mrkr.stats = col.summary(Comb)
+summary(mrkr.stats)
+anim.stats = row.summary(Comb)
+summary(anim.stats)
+anim.stats[which(anim.stats$Heterozygosity>0.4),]
+remove(Comb2,mrkr.stats,anim.stats,animals,avg,i,j,keep,miss,pop,s.mkr,MISS)
+#moving on...
+Map = DRECredmap[which(DRECredmap$snp.names%in%colnames(Comb)),]
+
+### Changing from SnpStats format to original genotype format:
+FC = as.data.frame(as(Comb,"character"))
+markers = array(colnames(FC))
+for(i in markers){
+  mapi = Map[which(Map$snp.names==i),]
+  geno = array(c(paste0(mapi$allele.1,mapi$allele.1),paste0(mapi$allele.1,mapi$allele.2),paste0(mapi$allele.2,mapi$allele.2)))
+  FC[which(FC[,i]=="A/A"),i]=geno[1]
+  FC[which(FC[,i]=="A/B"),i]=geno[2]
+  FC[which(FC[,i]=="B/B"),i]=geno[3]
+}
+FC[FC=="NA"]="00"
+
+### Getting marker names ready for 2 columns per marker
+markers = array(Map$snp.names)
+nmarkers = dim(markers)
+newmarkers = array(NA,dim=2*nmarkers)
+j = 1
+for(i in 1:nmarkers){
+  newmarkers[j:(j+1)]=c(paste0(markers[i],"_1"),paste0(markers[i],"_2"))
+  j = j+2
+}
+remove(i,j)
+
+### Splitting genotypes
+GenoS = do.call(cbind,
+                lapply(FC[,1:nmarkers],
+                       function(i) do.call(rbind,strsplit(as.character(i),split="")
+                       )
+                )
+)
+
+### Finalizing object with names
+library(data.table)
+GenoSS = cbind(data.table(row.names(FC)),GenoS)
+colnames(GenoSS)=c("ID",newmarkers)
+remove(GenoS,markers,nmarkers)
+
+### Making .ped file by combining .fam with genotypes
+ped = merge(fam,GenoSS,by.x="member",by.y="ID",all=TRUE)
+ped = ped[,c("pedigree","member","father","mother","sex","affected",newmarkers)]
+ped[is.na(ped)]=0
+
+### Making .map file by reorganizing and adding info
+map = Map[,c("V1","snp.names","V3","V4")]
+
+fwrite(ped,"AllComb11K.ped",quote=FALSE,sep=" ",row.names=FALSE,col.names=FALSE)
+write.table(map,"AllComb11K.map",quote=FALSE,sep=" ",row.names=FALSE,col.names=FALSE)
+write.table(Map,"AllComb11KAlleleMap.txt",quote=FALSE,sep=" ",row.names=FALSE,col.names = TRUE)
+remove(DREC,WIDDE,Comb,DRECredmap,FC,GenoSS,ped,fam,map,newmarkers)

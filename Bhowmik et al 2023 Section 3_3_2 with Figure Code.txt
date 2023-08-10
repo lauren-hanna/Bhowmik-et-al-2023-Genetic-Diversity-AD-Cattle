@@ -1,0 +1,51 @@
+#Bhowmik et al. 2023 - Section 3.3.2 + Figure 7
+
+#Note: assumes these files are in current working directory
+load("AMOVAout_All.RData"))
+load("AMOVAout_PB.RData"))
+#load("AMOVAout_PB_1Krep.RData")) #ran to see p-value differences, otherwise not reported in manuscript
+
+## Summary data:
+### Purebreds only
+out.amova.FPB$amova.FPB$componentsofcovariance
+
+### All populations
+out.amova.F$amova.F$componentsofcovariance
+
+## FIGURE 7 - AMOVA
+layout(matrix(c(1,2,10,3,4,5,6,7,8,9),5,2))
+par(mar=c(2.1,4.1,4.1,0))
+
+### Purebreds only
+sig = out.amova.FPB$sig.amova.FPB
+sig$names = c("Within Individual","Within PBT","Between PT","Between Origin")
+c=c("darkgrey","#005643","#dda301","darkred")
+t = c("**","","**","*")
+for(i in 1:4){
+  h = sig$plot[[i]]$hist
+  xl = round(sig$plot[[i]]$xlim,0)
+  plot(h,col=c[i],main="",xlim=xl,ylim=c(0,200),xlab="",ylab="Count",yaxt="n")
+  title(main=sig$names[i],line=1)
+  axis(2,at=seq(from=0,to=200,by=25),las=2)
+  points(sig$obs[i],50,pch=23,col="black",bg="black")
+  segments(sig$obs[i],0,sig$obs[i],50,col="black")
+  text(sig$obs[i],50,labels=t[i],pos=3,cex=2)
+  if(i ==1){mtext("A)",line = 1,adj=0)}
+}
+
+### All populations
+sig = out.amova.F$sig.amova.F
+sig$names = c("Within Individual","Within PBT","Between PBT","Between PT","Between Origin")
+c=c("darkgrey","#005643","#6F7D22","#dda301","darkred")
+t = c("**","**","**","**","")
+for(i in 1:5){
+  h = sig$plot[[i]]$hist
+  xl = round(sig$plot[[i]]$xlim,0)
+  plot(h,col=c[i],main="",xlim=xl,ylim=c(0,200),xlab="",ylab="Count",yaxt="n")
+  title(main=sig$names[i],line=1)
+  axis(2,at=seq(from=0,to=200,by=25),las=2)
+  points(sig$obs[i],50,pch=23,col="black",bg="black")
+  segments(sig$obs[i],0,sig$obs[i],50,col="black")
+  text(sig$obs[i],50,labels=t[i],pos=3,cex=2)
+  if(i ==1){mtext("B)",line = 1,adj=0)}
+}

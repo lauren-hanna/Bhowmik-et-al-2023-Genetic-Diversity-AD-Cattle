@@ -1,0 +1,91 @@
+#Bhowmik et al. 2023 Section 2.2 - Parentage Testing Function Only
+
+# Demonstrating how "opposing homozygote" parentage testing function works:
+## Notes:
+### Parentage based on proportion of opposing homozygous loci	              ####
+### Written by Dr. Lauren L. Hulsman Hanna, last updated Feb. 2023    			####
+### "Geno" was used in the nucleotide call format (A, C, G, T) rather than numeric call format (0, 1 or 0, 1, 2). The code could be adapted to fit either need.
+### "Stats" can be as simple as marker name and minor allele frequency (column name must be MAF). Marker name must match genotype file.
+### "animals" includes dams and all offspring to be parentage tested. Need animal ID, sex (1 = male, 2 = female), year born, year culled.
+### "sires" is a list of all possible sires with information on genotype status, year born, sold year.
+### "minAD" is the minimum age difference between an offspring and dam. For example, a heifer can calve as early as a 2 year old, therefore minAD = 2. Should be in whole years.
+### "threshold" is the maximum allowable homozygous loci parent and offspring can differ by. Set arbitrarily low (<1%) for a high density panel, but caution in increasing this! 
+### Sample files are provided to test the function.
+
+Parentage = function(Geno,Stats,animals,sires,MAF = 0.25,minAD = 2,threshold=600,savefiles=TRUE,destfile){
+	if(missing(Geno)){
+		stop("Error: You did not specify a genotype file to use.")
+	}
+	if(missing(Stats)){
+		stop("Error: You did not specify a marker statistics file to use.")
+	}
+	KeepStats = subset(Stats, Stats[,"MAF"] >= MAF & Stats$A2A2 > 0)
+	PGeno = Geno[,colnames(Geno) %in% c("ID",KeepStats[,"Name"])]
+	nmarkers = dim(KeepStats)[1]
+	
+	gsires = subset(sires, sires[,"Genotyped"] == "Yes")
+	dams = subset(animals, animals[,"Sex"] == 2)
+	off = subset(animals, animals[,"Parentage"] == "Yes")
+	parents = array(c(gsires[,"ID"],dams[,"ID"]))
+	alist = array(c(gsires[,"ID"],animals[,"ID"]))
+
+	ohp = matrix(0,nrow = dim(off)[1],ncol = dim(parents)[1], dimnames = list(off[,"ID"],parents))
+	tothom = matrix(0,nrow = dim(alist)[1],ncol = 1, dimnames = list(alist,"TotHom"))
+	#counting opposing homozygotes
+	for(i in 2:(nmarkers+1)){
+	  Types = array(sort(unique(PGeno[,i])))
+	  Types = Types[!Types == "--"]
+	  AA = Types[1]
+		BB = Types[3]
+		pAA = array(subset(PGeno[,"ID"], PGeno[,"ID"] %in% parents & PGeno[,i] == AA))
+		pBB = array(subset(PGeno[,"ID"], PGeno[,"ID"] %in% parents & PGeno[,i] == BB))
+
+		oAA = array(subset(PGeno[,"ID"], PGeno[,"ID"] %in% off[,"ID"] & PGeno[,i] == AA))
+		oBB = array(subset(PGeno[,"ID"], PGeno[,"ID"] %in% off[,"ID"] & PGeno[,i] == BB))
+
+		ohp[oAA,pBB] = ohp[oAA,pBB] + 1
+		ohp[oBB,pAA] = ohp[oBB,pAA] + 1
+		tothom[which(row.names(tothom)%in%array(PGeno[which(!(PGeno[,i] == "--")),"ID"])),"TotHom"] = tothom[which(row.names(tothom)%in%array(PGeno[which(!(PGeno[,i] == "--")),"ID"])),"TotHom"] + 1
+	}
+	#Identifying parents based solely on counts & keeping minimum if criteria met
+	ohsires = ohp[,which(colnames(ohp)%in%gsires$ID)]
+	sire = array(NA,dim=dim(ohp)[1],dimnames=list(row.names(ohp)))
+	sohp = array(NA,dim=dim(ohp)[1],dimnames=list(row.names(ohp)))
+	dam = array(NA,dim=dim(ohp)[1],dimnames=list(row.names(ohp)))
+	dohp = array(NA,dim=dim(ohp)[1],dimnames=list(row.names(ohp)))
+	for(i in row.names(ohp)){
+	  offBY = animals[which(animals[,"ID"]==i), "YearBorn"]
+	  if(length(colnames(ohsires[i,which(ohsires[i,]<threshold),drop=FALSE]))>0){
+	    sire[i] = colnames(ohsires[i,which(ohsires[i,]<threshold & ohsires[i,]==min(ohsires[i,])),drop=FALSE])
+	    sohp[i] = round(ohsires[i,sire[i]]/min(tothom[c(i,sire[i]),]),5)
+	  }
+	  pdams = dams[which(dams$YearBorn<=(offBY-minAD) & (dams$CullYear >= offBY | is.na(dams$CullYear))),"ID"]
+	  ohdams = ohp[i,which(colnames(ohp)%in%pdams),drop=FALSE]
+	  if(length(colnames(ohdams[i,which(ohdams[i,]<threshold),drop=FALSE]))>0){
+	    dam[i] = colnames(ohdams[i,which(ohdams[i,]<threshold & ohdams[i,]==min(ohdams[i,])),drop=FALSE])
+	    dohp[i] = round(ohdams[i,dam[i]]/min(tothom[c(i,dam[i]),]),5)
+	  }
+	}
+	Parents = data.frame(Sire = sire, SireOHP = sohp, Dam = dam, DamOHP = dohp)
+    #Saving output
+	if(savefiles == TRUE){
+		write.table(ohp,paste(destfile,"OppHomTable_",Sys.Date(),".txt",sep = ""),quote=FALSE)
+		write.table(tothom,paste(destfile,"TotalGenTable_",Sys.Date(),".txt",sep = ""),quote=FALSE)
+		write.table(Parents,paste(destfile,"Parents_",Sys.Date(),".txt",sep = ""),quote=FALSE,row.names=TRUE,sep="\t")
+	}
+	return(Parents)
+}
+
+#Assumes the sample files are in the same working directory as the R environment...
+Geno = read.table("Sample_Genotypes.txt",header=TRUE,check.names=FALSE)
+Stats = read.table("Sample_GenotypeStats.txt",header=TRUE,sep=" ")
+markers = array(colnames(Geno)) #verify the two files match
+Stats = Stats[which(Stats$Name%in%markers),] #verify the two files match
+remove(markers)
+
+animals = read.table("Sample_ParentageList.txt",sep = "\t", header=TRUE)
+sires = read.table("Sample_SireList.txt",sep="\t",header=TRUE)
+
+start = Sys.time() #optional if you want to know how long it takes
+DREC = Parentage(Geno,Stats,animals,sires,MAF = 0.25,destfile=paste0(getwd(),"/"))
+print(Sys.time()-start) #optional if you want to know how long it takes

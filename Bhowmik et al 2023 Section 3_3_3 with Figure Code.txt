@@ -1,0 +1,582 @@
+#Bhowmik et al. 2023 - Section 3.3.3 + Figure 8 to 10, Supplementary Files S3 and S4
+
+#Note: assumes these files are in current working directory
+load("GL.PCA.RData")
+load("FindClusters.RData")
+
+#Using Genlight PCA Output & Find Clusters K values
+## Purebreds only
+prop.var = PrPB.PCA$prop.var
+sum(prop.var[1:5])
+sum(prop.var[1:6])
+sum(prop.var[1:7])
+PBonly$Kstat
+PBonly$stat #6 clusters found, 5 and 7 is really close (0.056 to 0.401 diff)
+diff = PBonly$Kstat-PBonly$stat
+diff
+plot(PBonly$Kstat)
+
+## All populations
+prop.var = Pr.PCA$prop.var
+sum(prop.var[1:17])
+sum(prop.var[1:10])
+All$Kstat
+All$stat #10 clusters found
+diff=All$Kstat-All$stat
+diff
+plot(All$Kstat) #indicate 9-10 may be feasible flux point
+
+remove(All,PBonly,Pr.PCA,PrPB.PCA,diff)
+
+# Summarizing DAPC Output
+
+## These RData objects will be used throughout the rest of the script, do not remove after steps
+load("DAPC_CV_PBonly.RData")
+load("DAPC_CV_Allv2.RData") #100 PC evaluated
+
+## Purebreds only
+### General summary information
+PBx2[-1]
+maxMSA = PBx2$`Mean Successful Assignment by Number of PCs of PCA`[23] #97.55076%
+diff = (PBx2$`Mean Successful Assignment by Number of PCs of PCA`-maxMSA)*100 # percentage difference
+diff[which(diff>-1)] #as low as 7 PC
+
+lowMSE = PBx2$`Root Mean Squared Error by Number of PCs of PCA`[12] #0.0462
+diff = PBx2$`Root Mean Squared Error by Number of PCs of PCA`-lowMSE
+p.diff = diff
+for(i in names(p.diff)){
+  p.diff[i]=round((p.diff[i]/PBx2$`Root Mean Squared Error by Number of PCs of PCA`[i])*100,2)
+}
+p.diff[which(p.diff<1)] #none except PC 12
+
+### Axes of interest
+pop.coord = data.frame(pop = row.names(PBx2$DAPC$grp.coord),PBx2$DAPC$grp.coord)
+sc.pop.coord = pop.coord
+maxdiff = array(NA,dim=7)
+for(i in 2:dim(pop.coord)[2]){
+  min.coord = abs(min(pop.coord[,i]))
+  sc.pop.coord[,i]=sc.pop.coord[,i]+min.coord
+  maxdiff[i-1]=max(sc.pop.coord[,i])
+}
+maxdiff
+prop.apart = sc.pop.coord[,2:8]
+for(i in 1:8){
+  prop.apart[i,] = prop.apart[i,]/maxdiff
+}
+#### LD1 - adjust to AD
+1-prop.apart[,1,drop=FALSE]
+#### LD3 - adjust to AD
+1-prop.apart[,3,drop=FALSE]
+#### LD4 - adjust to AD
+prop.apart[,4,drop=FALSE]-prop.apart[1,4]
+
+## All populations
+### General summary information
+Allx2[-1] # DAPC retained 93 PCA and 17 DA
+maxMSA = Allx2$`Mean Successful Assignment by Number of PCs of PCA`[93] #83.20297%
+diff = (Allx2$`Mean Successful Assignment by Number of PCs of PCA`-maxMSA)*100 # percentage difference
+diff[which(diff>-1)] #as low as 57 PC
+
+lowMSE = Allx2$`Root Mean Squared Error by Number of PCs of PCA`[93] #0.1701637
+diff = Allx2$`Root Mean Squared Error by Number of PCs of PCA`-lowMSE
+p.diff = diff
+for(i in names(p.diff)){
+  p.diff[i]=round((p.diff[i]/Allx2$`Root Mean Squared Error by Number of PCs of PCA`[i])*100,2)
+}
+p.diff[which(p.diff<1)] #as low as 81, includes 81,85,86,87,88,90,93,94,95,96,97,100
+p.diff[c(35,50)] #given next section: 7.53%, 7.44%; 
+Allx2$`Root Mean Squared Error by Number of PCs of PCA`[c(35,50)] #0.1840196,0.1838508
+
+### Axes of interest
+pop.coord = data.frame(pop = row.names(Allx2$DAPC$grp.coord),Allx2$DAPC$grp.coord)
+sc.pop.coord = pop.coord
+maxdiff = array(NA,dim=17)
+for(i in 2:dim(pop.coord)[2]){
+  min.coord = abs(min(pop.coord[,i]))
+  sc.pop.coord[,i]=sc.pop.coord[,i]+min.coord
+  maxdiff[i-1]=max(sc.pop.coord[,i])
+}
+maxdiff
+prop.apart = sc.pop.coord[,2:18]
+for(i in 1:18){
+  prop.apart[i,] = prop.apart[i,]/maxdiff
+}
+
+#### LD1
+prop.apart[,1,drop=FALSE]
+#### LD2
+1-prop.apart[,2,drop=FALSE]
+#### LD3
+prop.apart[,3,drop=FALSE]
+
+
+# Figures 8 to 10 and Supplementary Files S3, S4
+library(adegenet)
+library(rgl)
+
+#Note: The following line will open a new RGL window, you will need to adjust the size to make the graphs larger.
+open3d()
+
+## FIGURE 8
+layout3d(matrix(c(1:4),nrow=2,byrow = TRUE))
+
+### Purebred Only, setting up parameters
+ind.coord = data.frame(pop = PBx2$DAPC$grp,PBx2$DAPC$ind.coord)
+pop.coord = data.frame(pop = row.names(PBx2$DAPC$grp.coord),PBx2$DAPC$grp.coord)
+mypch = array(c(17,15,15,19,15,15,19,19)[ind.coord$pop])
+mycol = array(c("#8B0000","#005643","#005643","darkgoldenrod","#005643","#005643","darkgoldenrod","darkgoldenrod")[ind.coord$pop])
+pop = array(c("AD","AN","AR","GV","HH","LM","SH","SM"))
+pop.col = c("#8B0000","#005643","#005643","darkgoldenrod","#005643","#005643","darkgoldenrod","darkgoldenrod")
+
+#### Purebred LD1 to LD3 3D plot, part A
+plot3d(ind.coord$LD1,ind.coord$LD2,ind.coord$LD3,type="n",
+       xlim = c(-14,12),ylim=c(-11,10),zlim=c(-5,14),
+       xlab="LDA-1",ylab="LDA-2",zlab="LDA-3")
+pch3d(ind.coord[,2:4],pch=mypch,col=mycol,cex=0.1)
+
+for(i in 1:dim(pop)){
+  temp = ind.coord[which(ind.coord$pop==pop[i]),]
+  ptemp = pop.coord[which(pop.coord$pop==pop[i]),]
+  for(j in 1:dim(temp)[1]){
+    lines3d(rbind(temp[j,2:4],ptemp[1,2:4]),col=mycol[which(ind.coord$pop==pop[i])])
+  }
+  ellips = ellipse3d(cov(temp[,2:4]),
+                     centre=c(mean(temp[,2]),mean(temp[,3]),mean(temp[,4])),level=0.95)
+  shade3d(ellips,col=mycol[which(ind.coord$pop==pop[i])],alpha=0.1)
+}
+text3d(pop.coord[,2:4],texts=pop.coord$pop,
+       col=pop.col,adj=c(-1,-1))
+mtext3d("A)",edge="z",line=4,cex=2)
+
+#### Purebred LD2 to LD4 3D plot, part B
+plot3d(ind.coord$LD2,ind.coord$LD3,ind.coord$LD4,type="n",
+       xlim = c(-11,10),ylim=c(-5,14),zlim=c(-5,17),
+       xlab="LDA-2",ylab="LDA-3",zlab="LDA-4")
+pch3d(ind.coord[,3:5],pch=mypch,col=mycol,cex=0.1)
+
+for(i in 1:dim(pop)){
+  temp = ind.coord[which(ind.coord$pop==pop[i]),]
+  ptemp = pop.coord[which(pop.coord$pop==pop[i]),]
+  for(j in 1:dim(temp)[1]){
+    lines3d(rbind(temp[j,3:5],ptemp[1,3:5]),col=mycol[which(ind.coord$pop==pop[i])])
+  }
+  ellips = ellipse3d(cov(temp[,3:5]),
+                     centre=c(mean(temp[,3]),mean(temp[,4]),mean(temp[,5])),level=0.95)
+  shade3d(ellips,col=mycol[which(ind.coord$pop==pop[i])],alpha=0.1)
+}
+text3d(pop.coord[,3:5],texts=pop.coord$pop,
+       col=pop.col,adj=c(-1,-1))
+mtext3d("B)",edge="z",line=4,cex=2)
+
+### All populations, setting up parameters
+ind.coord = data.frame(pop = Allx2$DAPC$grp,Allx2$DAPC$ind.coord)
+pop.coord = data.frame(pop = row.names(Allx2$DAPC$grp.coord),Allx2$DAPC$grp.coord)
+mypch = array(c(17,15,15,19,15,15,15,17,15,18,19,19,19,15,19,15,19,19)[ind.coord$pop])
+mycol = array(c("#8B0000","#005643","#005643","darkgoldenrod","#005643","#005643",
+                "#005643","#8B0000","#005643","black","darkgoldenrod","darkgoldenrod",
+                "darkgoldenrod","#005643","darkgoldenrod","#005643","darkgoldenrod",
+                "darkgoldenrod")[ind.coord$pop])
+pop = array(factor(c("AD","AN","AR","GV","HH","LM","SH","SM","ADI","ANI","ARI",
+                     "GVI","LMI","SHI","SMI","F1BB","F1BC","F1CC")))
+pop.col = c("#8B0000","#005643","#005643","darkgoldenrod","#005643","#005643",
+            "#005643","#8B0000","#005643","black","darkgoldenrod","darkgoldenrod",
+            "darkgoldenrod","#005643","darkgoldenrod","#005643","darkgoldenrod",
+            "darkgoldenrod")
+
+#### All Pop. LD1 to LD3 3D plot, part C
+plot3d(ind.coord$LD1,ind.coord$LD2,ind.coord$LD3,type="n",
+       xlim = c(-5,24),ylim=c(-14,6),zlim=c(-13,6),
+       xlab="LDA-1",ylab="LDA-2",zlab="LDA-3")
+pch3d(ind.coord[,2:4],pch=mypch,col=mycol,cex=0.1)
+
+for(i in 1:dim(pop)){
+  temp = ind.coord[which(ind.coord$pop==pop[i]),]
+  ptemp = pop.coord[which(pop.coord$pop==pop[i]),]
+  for(j in 1:dim(temp)[1]){
+    lines3d(rbind(temp[j,2:4],ptemp[1,2:4]),col=mycol[which(ind.coord$pop==pop[i])])
+  }
+  ellips = ellipse3d(cov(temp[,2:4]),
+                     centre=c(mean(temp[,2]),mean(temp[,3]),mean(temp[,4])),level=0.95)
+  shade3d(ellips,col=mycol[which(ind.coord$pop==pop[i])],alpha=0.1)
+}
+text3d(pop.coord[,2:4],texts=pop.coord$pop,
+       col=pop.col,adj=c(-1,-1))
+mtext3d("C)",edge="z",line=4,cex=2)
+
+#### All Pop. LD2 to LD4 3D plot, part D
+plot3d(ind.coord$LD2,ind.coord$LD3,ind.coord$LD4,type="n",
+       xlim = c(-14,6),ylim=c(-13,6),zlim=c(-6,10),
+       xlab="LDA-2",ylab="LDA-3",zlab="LDA-4")
+pch3d(ind.coord[,3:5],pch=mypch,col=mycol,cex=0.1)
+
+for(i in 1:dim(pop)){
+  temp = ind.coord[which(ind.coord$pop==pop[i]),]
+  ptemp = pop.coord[which(pop.coord$pop==pop[i]),]
+  for(j in 1:dim(temp)[1]){
+    lines3d(rbind(temp[j,3:5],ptemp[1,3:5]),col=mycol[which(ind.coord$pop==pop[i])])
+  }
+  if(i !=13){
+    ellips = ellipse3d(cov(temp[,3:5]),
+                       centre=c(mean(temp[,3]),mean(temp[,4]),mean(temp[,5])),level=0.95)
+    shade3d(ellips,col=mycol[which(ind.coord$pop==pop[i])],alpha=0.1)
+  }
+}
+text3d(pop.coord[,3:5],texts=pop.coord$pop,
+       col=pop.col,adj=c(-1,-1))
+mtext3d("D)",edge="z",line=4,cex=2)
+
+### For each graph, change orientation as desired before doing next step.
+### Save final image:
+rgl.snapshot('3dplot.png', fmt = 'png')
+
+# FIGURE 9
+map = plinkFile::readBIM("PrAllComb11K")
+par(mar=c(4.1,5.1,2.1,2.1))
+
+## Find 10% quantile for var.contr
+#for(i in 1:dim(PBx2$DAPC$var.contr)[2]){
+#  print(round(quantile(PBx2$DAPC$var.contr[,i],probs = 0.998),5))
+#} #0.00028-0.00029 across purebred PBT for 90%; 0.00039-0.00042 for 95%; 0.00066-0.00075
+
+## Find x axis label points based on chromosome length
+xpts = data.frame(Chr = 1:29,Start = NA, Mid = NA, Finish = NA)
+for(i in 1:29){
+  xpts[i,"Start"]=min(which(map$chr==i))
+  xpts[i,"Finish"]=max(which(map$chr==i))
+  xpts[i,"Mid"]=xpts[i,"Start"]+round((xpts[i,"Finish"]-xpts[i,"Start"])/2,0)
+}
+
+## Add total marker contribution to map object
+map[,c("LD1","LD2","LD3","LD4","LD5","LD6","LD7")] = NA
+for(i in 1:dim(map)[1]){
+  temp = PBx2$DAPC$var.contr[grep(map[i,"id"],row.names(PBx2$DAPC$var.contr)),]
+  map[i,c("LD1","LD2","LD3","LD4","LD5","LD6","LD7")] = colSums(temp[,1:7])
+}
+remove(i,temp)
+
+## Part A plot outcomes
+layout(matrix(c(1:2),nrow=2))
+ppts = data.frame(x = 1:dim(map)[1],map[,c("LD1","LD2","LD3","LD4","LD5","LD6","LD7")])
+ymax = max(ppts[,2:5])
+thres = array(apply(ppts[,2:8],2,quantile,probs = 0.98))
+nda = 4
+plot(c(0,dim(map)[1]),c(0,ymax),xaxt="n",yaxt="n",type="n",xlab = "SNP Marker by Chromosome",ylab="",main="")
+axis(1,at=c(xpts$Start,xpts[29,"Finish"]),labels=NA)
+axis(1,at=xpts$Mid,labels=xpts$Chr,tick=FALSE)
+axis(2,at=seq(from=0,to=0.0035,by=0.0005),las=2)
+abline(h = seq(from=0,to=0.0035,by=0.0005),lty=2,col="lightgrey")
+abline(h = mean(thres),col="red")
+abline(h = 0.0025,col="blue",lty=2)
+cols = c("#8B0000","#005643","#FFC82E","grey") #four LD colors
+
+for(i in 1:nda){
+  temp = ppts[which(ppts[,(i+1)]>thres[i]),]
+  points(as.matrix(temp[,c(1,(i+1))]),pch = 19,col=cols[i])
+  points(as.matrix(ppts[which(!(ppts$x%in%temp$x)),c(1,(i+1))]),pch = 19,col="black",cex=0.5)
+  if(i == 1){
+    aboveThres = list(LD1 = temp)
+    aboveStdrd = list(LD1 = temp[which(temp[,(i+1)]>0.002),])
+  }else{
+    aboveThres[[paste0("LD",i)]]=temp
+    aboveStdrd[[paste0("LD",i)]]=temp[which(temp[,(i+1)]>0.002),]
+  }
+}
+legend("topright",legend=c("LDA-1","LDA-2","LDA-3","LDA-4"),pch=19,col=cols,inset=c(-0.01,0),xpd=TRUE)
+mtext("Loading",side=2,line=4)
+mtext("A)",line = 1,adj=0)
+
+## Part B frequency differences for LD1
+mrkrs = unique(c(aboveStdrd$LD1[which(aboveStdrd$LD1$LD1>=0.0025),"x"],
+  aboveStdrd$LD2[which(aboveStdrd$LD2$LD2>=0.0025),"x"],
+  aboveStdrd$LD4[which(aboveStdrd$LD4$LD4>=0.0025),"x"]))
+mrkrs = mrkrs[order(mrkrs)]
+mrkr.names = map[mrkrs,"id"] #9 markers
+
+load("Genos_AdegenetFormat.RData") ## File Not provided
+remove(GenoA.F,GenoA.FPB)
+temp = adegenet::seploc(GenoA.PrPB)
+clrs = c("#8B0000","#005643","#005643","#FFC82E",
+         "#005643","#FFC82E","#005643","#FFC82E","grey")
+pop = c("AD","AN","AR","GV","HH","LM","SH","SM")
+nc = 85
+barplot(height=t(matrix(0,nrow=nc,ncol=2)),ylim=c(0,1),xlab = "Population by SNP",ylab="Allele Frequency",main="",yaxt="n")
+axis(2,at=seq(from=0,to=1,by=0.05),las=2)
+abline(h=0,col="black")
+abline(h=seq(from=0.05,to=1,by=0.05),lty=2,col="lightgrey")
+s=0
+for(i in 1:dim(array(mrkrs))){
+  snp1 = tab(temp[[mrkr.names[i]]])
+  freq1 = (apply(snp1, 2, function(e) tapply(e, pop(GenoA.PrPB), mean, na.rm = TRUE))/2)
+  for(j in 1:dim(freq1)[1]){
+    tfreq = freq1[which(row.names(freq1)==pop[j]),,drop=FALSE]
+    if(j == 5){
+      barplot(height = t(tfreq),space=s,beside = FALSE,add=TRUE,xlim=c(0,nc),ylim=c(0,1),col=clrs[c(j,9)],names.arg=paste0("SNP ",mrkrs[i]),xlab="",ylab="",main="",yaxt="n",xpd=FALSE)
+    }else{
+      barplot(height = t(tfreq),space=s,beside = FALSE,add=TRUE,xlim=c(0,nc),ylim=c(0,1),col=clrs[c(j,9)],names.arg="",xlab="",ylab="",main="",yaxt="n",xpd=FALSE)
+    }
+    s = s+1.2
+  }
+  s = s+2
+}
+legend("topright",legend=pop,fill = clrs[1:8],inset=c(-0.01,0),xpd=TRUE)
+mtext("B)",line = 1,adj=0)
+
+# FIGURE 10
+map = plinkFile::readBIM("PrAllComb11K") #To start over for this figure
+par(mar=c(4.1,5.1,2.1,2.1))
+# Find 10% quantile for var.contr
+#for(i in 1:dim(Allx2$DAPC$var.contr)[2]){
+#  print(round(quantile(Allx2$DAPC$var.contr[,i],probs = 0.998),5))
+#} #0.00093-0.00119 across all PBT for 99.8%
+
+## Find x axis label points based on chromosome length
+xpts = data.frame(Chr = 1:29,Start = NA, Mid = NA, Finish = NA)
+for(i in 1:29){
+  xpts[i,"Start"]=min(which(map$chr==i))
+  xpts[i,"Finish"]=max(which(map$chr==i))
+  xpts[i,"Mid"]=xpts[i,"Start"]+round((xpts[i,"Finish"]-xpts[i,"Start"])/2,0)
+}
+
+## Add total marker contribution to map object
+map[,c("LD1","LD2","LD3","LD4","LD5","LD6","LD7")] = NA
+for(i in 1:dim(map)[1]){
+  temp = Allx2$DAPC$var.contr[grep(map[i,"id"],row.names(Allx2$DAPC$var.contr)),]
+  map[i,c("LD1","LD2","LD3","LD4","LD5","LD6","LD7")] = colSums(temp[,1:7])
+}
+remove(i,temp)
+
+## Part A plot outcomes
+layout(matrix(c(1:2),nrow=2))
+ppts = data.frame(x = 1:dim(map)[1],map[,c("LD1","LD2","LD3","LD4","LD5","LD6","LD7")])
+ymax = max(ppts[,2:5])
+thres = array(apply(ppts[,2:8],2,quantile,probs = 0.98))
+nda = 4
+plot(c(0,dim(map)[1]),c(0,ymax),xaxt="n",yaxt="n",type="n",xlab = "SNP Marker by Chromosome",ylab="",main="")
+axis(1,at=c(xpts$Start,xpts[29,"Finish"]),labels=NA)
+axis(1,at=xpts$Mid,labels=xpts$Chr,tick=FALSE)
+axis(2,at=seq(from=0,to=0.0035,by=0.0005),las=2)
+abline(h = seq(from=0,to=0.0035,by=0.0005),lty=2,col="lightgrey")
+abline(h = mean(thres),col="red")
+abline(h = 0.0025,col="blue",lty=2)
+cols = c("#8B0000","#005643","#FFC82E","grey") #four LD colors
+
+for(i in 1:nda){
+  temp = ppts[which(ppts[,(i+1)]>thres[i]),]
+  points(as.matrix(temp[,c(1,(i+1))]),pch = 19,col=cols[i])
+  points(as.matrix(ppts[which(!(ppts$x%in%temp$x)),c(1,(i+1))]),pch = 19,col="black",cex=0.5)
+  if(i == 1){
+    aboveThres = list(LD1 = temp)
+    aboveStdrd = list(LD1 = temp[which(temp[,(i+1)]>0.002),])
+  }else{
+    aboveThres[[paste0("LD",i)]]=temp
+    aboveStdrd[[paste0("LD",i)]]=temp[which(temp[,(i+1)]>0.002),]
+  }
+}
+legend("topright",legend=c("LDA-1","LDA-2","LDA-3","LDA-4"),pch=19,col=cols,inset=c(-0.01,0),xpd=TRUE)
+mtext("Loading",side=2,line=4)
+mtext("A)",line = 1,adj=0)
+
+## Part B frequency differences for LD1
+mrkrs = unique(c(aboveStdrd$LD1[which(aboveStdrd$LD1$LD1>=0.0025),"x"],
+                 aboveStdrd$LD2[which(aboveStdrd$LD2$LD2>=0.0025),"x"],
+                 aboveStdrd$LD3[which(aboveStdrd$LD3$LD3>=0.0025),"x"],
+                 aboveStdrd$LD4[which(aboveStdrd$LD4$LD4>=0.0025),"x"]))
+mrkrs = mrkrs[order(mrkrs)]
+#just LD1 & LD3
+mrkrs = unique(c(aboveStdrd$LD1[which(aboveStdrd$LD1$LD1>=0.0025),"x"],
+                 aboveStdrd$LD3[which(aboveStdrd$LD3$LD3>=0.0025),"x"]))
+mrkrs = mrkrs[order(mrkrs)]
+mrkr.names = map[mrkrs,"id"] #4 markers
+
+load("Genos_AdegenetFormat.RData") ## File not provided
+remove(GenoA.F,GenoA.FPB)
+temp = adegenet::seploc(GenoA.Pr)
+pop = array(factor(c("AD","AN","AR","GV","HH","LM","SH","SM","ADI","ANI","ARI",
+                     "GVI","LMI","SHI","SMI","F1BB","F1BC","F1CC")))
+clrs = c("#8B0000","#005643","#005643","#FFC82E","#005643","#FFC82E","#005643",
+            "#FFC82E","#8B0000","#005643","#005643","#FFC82E","#FFC82E",
+            "#005643","#FFC82E","#005643","black","#FFC82E","grey")
+nc = 80
+barplot(height=t(matrix(0,nrow=nc,ncol=2)),ylim=c(0,1),xlab = "Population by SNP",ylab="Allele Frequency",main="",yaxt="n")
+axis(2,at=seq(from=0,to=1,by=0.05),las=2)
+abline(h=0,col="black")
+abline(h=seq(from=0.05,to=1,by=0.05),lty=2,col="lightgrey")
+s=0
+for(i in 1:dim(array(mrkrs))){
+  snp1 = tab(temp[[mrkr.names[i]]])
+  freq1 = (apply(snp1, 2, function(e) tapply(e, pop(GenoA.Pr), mean, na.rm = TRUE))/2)
+  for(j in 1:dim(freq1)[1]){
+    tfreq = freq1[which(row.names(freq1)==pop[j]),,drop=FALSE]
+    if(j == 10){
+      barplot(height = t(tfreq),space=s,beside = FALSE,add=TRUE,xlim=c(0,nc),ylim=c(0,1),col=clrs[c(j,19)],names.arg=paste0("SNP ",mrkrs[i]),xlab="",ylab="",main="",yaxt="n",xpd=FALSE)
+    }else{
+      barplot(height = t(tfreq),space=s,beside = FALSE,add=TRUE,xlim=c(0,nc),ylim=c(0,1),col=clrs[c(j,19)],names.arg="",xlab="",ylab="",main="",yaxt="n",xpd=FALSE)
+    }
+    s = s+1.2
+  }
+  s = s+2
+}
+legend("topright",legend=pop,fill = clrs[1:18],inset=c(-0.01,0),xpd=TRUE)
+mtext("B)",line = 1,adj=0)
+
+# Supplementary File S3 Figure
+library(adegenet)
+library(rgl)
+
+#Note: The following line will open a new RGL window, you will need to adjust the size to make the graphs larger.
+open3d()
+layout3d(matrix(c(1:4),nrow=2,byrow = TRUE))
+
+### Purebred Only, setting up parameters
+ind.coord = data.frame(pop = PBx2$DAPC$grp,PBx2$DAPC$ind.coord)
+pop.coord = data.frame(pop = row.names(PBx2$DAPC$grp.coord),PBx2$DAPC$grp.coord)
+mypch = array(c(17,15,15,19,15,15,19,19)[ind.coord$pop])
+mycol = array(c("#8B0000","#005643","#005643","darkgoldenrod","#005643","#005643","darkgoldenrod","darkgoldenrod")[ind.coord$pop])
+pop = array(c("AD","AN","AR","GV","HH","LM","SH","SM"))
+pop.col = c("#8B0000","#005643","#005643","darkgoldenrod","#005643","#005643","darkgoldenrod","darkgoldenrod")
+
+#### Purebred LD3 to LD5 3D plot, part A
+plot3d(ind.coord$LD3,ind.coord$LD4,ind.coord$LD5,type="n",
+       xlim = c(-5,14),ylim=c(-5,17),zlim=c(-11,12),
+       xlab="LDA-3",ylab="LDA-4",zlab="LDA-5")
+pch3d(ind.coord[,4:6],pch=mypch,col=mycol,cex=0.1)
+
+for(i in 1:dim(pop)){
+  temp = ind.coord[which(ind.coord$pop==pop[i]),]
+  ptemp = pop.coord[which(pop.coord$pop==pop[i]),]
+  for(j in 1:dim(temp)[1]){
+    lines3d(rbind(temp[j,4:6],ptemp[1,4:6]),col=mycol[which(ind.coord$pop==pop[i])])
+  }
+  ellips = ellipse3d(cov(temp[,4:6]),
+                     centre=c(mean(temp[,4]),mean(temp[,5]),mean(temp[,6])),level=0.95)
+  shade3d(ellips,col=mycol[which(ind.coord$pop==pop[i])],alpha=0.1)
+}
+text3d(pop.coord[,4:6],texts=pop.coord$pop,
+       col=pop.col,adj=c(-1,-1))
+
+mtext3d("A)",edge="z",line=4,cex=2)
+
+#### Purebred LD4 to LD6 3D plot, part B
+plot3d(ind.coord$LD4,ind.coord$LD5,ind.coord$LD6,type="n",
+       xlim = c(-5,17),ylim=c(-11,12),zlim=c(-7,9),
+       xlab="LDA-4",ylab="LDA-5",zlab="LDA-6")
+pch3d(ind.coord[,5:7],pch=mypch,col=mycol,cex=0.1)
+
+for(i in 1:dim(pop)){
+  temp = ind.coord[which(ind.coord$pop==pop[i]),]
+  ptemp = pop.coord[which(pop.coord$pop==pop[i]),]
+  for(j in 1:dim(temp)[1]){
+    lines3d(rbind(temp[j,5:7],ptemp[1,5:7]),col=mycol[which(ind.coord$pop==pop[i])])
+  }
+  ellips = ellipse3d(cov(temp[,5:7]),
+                     centre=c(mean(temp[,5]),mean(temp[,6]),mean(temp[,7])),level=0.95)
+  shade3d(ellips,col=mycol[which(ind.coord$pop==pop[i])],alpha=0.1)
+}
+text3d(pop.coord[,5:7],texts=pop.coord$pop,
+       col=pop.col,adj=c(-1,-1))
+mtext3d("B)",edge="z",line=4,cex=2)
+
+### All populations, setting up parameters
+ind.coord = data.frame(pop = Allx2$DAPC$grp,Allx2$DAPC$ind.coord)
+pop.coord = data.frame(pop = row.names(Allx2$DAPC$grp.coord),Allx2$DAPC$grp.coord)
+mypch = array(c(17,15,15,19,15,15,15,17,15,18,19,19,19,15,19,15,19,19)[ind.coord$pop])
+mycol = array(c("#8B0000","#005643","#005643","darkgoldenrod","#005643","#005643",
+                "#005643","#8B0000","#005643","black","darkgoldenrod","darkgoldenrod",
+                "darkgoldenrod","#005643","darkgoldenrod","#005643","darkgoldenrod",
+                "darkgoldenrod")[ind.coord$pop])
+pop = array(factor(c("AD","AN","AR","GV","HH","LM","SH","SM","ADI","ANI","ARI",
+                     "GVI","LMI","SHI","SMI","F1BB","F1BC","F1CC")))
+pop.col = c("#8B0000","#005643","#005643","darkgoldenrod","#005643","#005643",
+            "#005643","#8B0000","#005643","black","darkgoldenrod","darkgoldenrod",
+            "darkgoldenrod","#005643","darkgoldenrod","#005643","darkgoldenrod",
+            "darkgoldenrod")
+
+#### All pop. LD3 to LD5 3D plot, part C
+plot3d(ind.coord$LD3,ind.coord$LD4,ind.coord$LD5,type="n",
+       xlim = c(-13,6),ylim=c(-6,10),zlim=c(-6,7),
+       xlab="LDA-3",ylab="LDA-4",zlab="LDA-5")
+pch3d(ind.coord[,4:6],pch=mypch,col=mycol,cex=0.1)
+
+for(i in 1:dim(pop)){
+  temp = ind.coord[which(ind.coord$pop==pop[i]),]
+  ptemp = pop.coord[which(pop.coord$pop==pop[i]),]
+  for(j in 1:dim(temp)[1]){
+    lines3d(rbind(temp[j,4:6],ptemp[1,4:6]),col=mycol[which(ind.coord$pop==pop[i])])
+  }
+  ellips = ellipse3d(cov(temp[,4:6]),
+                     centre=c(mean(temp[,4]),mean(temp[,5]),mean(temp[,6])),level=0.95)
+  shade3d(ellips,col=mycol[which(ind.coord$pop==pop[i])],alpha=0.1)
+}
+text3d(pop.coord[,4:6],texts=pop.coord$pop,
+       col=pop.col,adj=c(-1,-1))
+mtext3d("C)",edge="z",line=4,cex=2)
+
+#### All pop. LD4 to LD6 3D plot, part D 
+plot3d(ind.coord$LD4,ind.coord$LD5,ind.coord$LD6,type="n",
+       xlim = c(-6,10),ylim=c(-6,7),zlim=c(-11,11),
+       xlab="LDA-4",ylab="LDA-5",zlab="LDA-6")
+pch3d(ind.coord[,5:7],pch=mypch,col=mycol,cex=0.1)
+
+for(i in 1:dim(pop)){
+  temp = ind.coord[which(ind.coord$pop==pop[i]),]
+  ptemp = pop.coord[which(pop.coord$pop==pop[i]),]
+  for(j in 1:dim(temp)[1]){
+    lines3d(rbind(temp[j,5:7],ptemp[1,5:7]),col=mycol[which(ind.coord$pop==pop[i])])
+  }
+  if(i != 13){
+    ellips = ellipse3d(cov(temp[,5:7]),
+                       centre=c(mean(temp[,5]),mean(temp[,6]),mean(temp[,7])),level=0.95)
+    shade3d(ellips,col=mycol[which(ind.coord$pop==pop[i])],alpha=0.1)
+  }
+}
+text3d(pop.coord[,5:7],texts=pop.coord$pop,
+       col=pop.col,adj=c(-1,-1))
+mtext3d("D)",edge="z",line=4,cex=2)
+
+### For each graph, change orientation as desired before doing next step.
+### Save final image:
+rgl.snapshot('3dplot.png', fmt = 'png')
+
+# Supplementary File S4 Figure
+load("BSTAT.RData")
+map = plinkFile::readBIM("PrAllComb11K") #to start over for figure
+par(mar=c(4.1,5.1,2.1,2.1))
+layout(matrix(c(1:2),nrow=2))
+
+## Find x axis label points based on chromosome length
+xpts = data.frame(Chr = 1:29,Start = NA, Mid = NA, Finish = NA)
+for(i in 1:29){
+  xpts[i,"Start"]=min(which(map$chr==i))
+  xpts[i,"Finish"]=max(which(map$chr==i))
+  xpts[i,"Mid"]=xpts[i,"Start"]+round((xpts[i,"Finish"]-xpts[i,"Start"])/2,0)
+}
+
+## FST plot - purebreds only
+loc.stat = BSTAT$BSTAT.PRPB$b.stat.PrPB$perloc
+mrkrs = c(653,1402,2695,3080,3235,3588,3617,3834,4821)
+ppts = data.frame(x = 1:dim(map)[1],loc.stat[map$id,"Fstp"])
+plot(ppts,ylim=c(0,0.5),xaxt="n",yaxt="n",type="n",xlab = "SNP Marker by Chromosome",ylab=expression("F"*""[ST]*"'"),main="")
+axis(1,at=c(xpts$Start,xpts[29,"Finish"]),labels=NA)
+axis(1,at=xpts$Mid,labels=xpts$Chr,tick=FALSE)
+axis(2,at=seq(from=0,to=0.5,by=0.05),las=2)
+abline(h = seq(from=0,to=0.5,by=0.05),lty=2,col="lightgrey")
+abline(h = 0.25,lty=2,col="red")
+points(as.matrix(ppts[which(ppts[,2]<0.25 & !(ppts[,"x"]%in%mrkrs)),]),pch = 19,col="black",cex=0.5)
+points(as.matrix(ppts[which(ppts[,2]>=0.25 & !(ppts[,"x"]%in%mrkrs)),]),pch = 19,col="#8B0000")
+points(ppts[mrkrs,],pch=19,col="#FFC82E",cex=1.5)
+mtext("A)",line = 1,adj=0)
+
+## FST plot - All populations
+loc.stat = BSTAT$BSTAT.PR$b.stat.Pr$perloc
+mrkrs = c(653,1882,3893,4665) #LD1 & LD3 only
+ppts = data.frame(x = 1:dim(map)[1],loc.stat[map$id,"Fstp"])
+plot(ppts,ylim=c(0,0.5),xaxt="n",yaxt="n",type="n",xlab = "SNP Marker by Chromosome",ylab=expression("F"*""[ST]*"'"),main="")
+axis(1,at=c(xpts$Start,xpts[29,"Finish"]),labels=NA)
+axis(1,at=xpts$Mid,labels=xpts$Chr,tick=FALSE)
+axis(2,at=seq(from=0,to=0.5,by=0.05),las=2)
+abline(h = seq(from=0,to=0.5,by=0.05),lty=2,col="lightgrey")
+abline(h = 0.25,lty=2,col="red")
+points(as.matrix(ppts[which(ppts[,2]<0.25 & !(ppts[,"x"]%in%mrkrs)),]),pch = 19,col="black",cex=0.5)
+points(as.matrix(ppts[which(ppts[,2]>=0.25 & !(ppts[,"x"]%in%mrkrs)),]),pch = 19,col="#8B0000")
+points(ppts[mrkrs,],pch=19,col="#FFC82E",cex=1.5)
+mtext("B)",line = 1,adj=0)

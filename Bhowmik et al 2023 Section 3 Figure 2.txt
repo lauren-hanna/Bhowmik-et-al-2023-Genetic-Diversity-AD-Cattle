@@ -1,0 +1,57 @@
+#Bhowmik et al. 2023 - Section 3.0 only + Figure 2
+
+#Note: assumes these files are in current working directory
+load("LD.sum.RData")
+map = read.table("AllComb11K.map",header=FALSE)
+
+clrs = array(c("#005643","#FFC82E","black")) 
+chr = array(unlist(unique(map$V1)))
+
+# General Summary Information:
+Pmrkrs = array(NA)
+for(i in chr){
+  Pmrkrs = array(c(Pmrkrs,dim(map[which(map$V1==i),])[1]/dim(map)[1]))
+}
+round(range(Pmrkrs[!is.na(Pmrkrs)])*100,2)
+
+#Proportion of LD . 0.1
+LD.within = LD.sum$prop.LD[which(LD.sum$prop.LD$Group=="Within"),c(1:3)]
+LD.across = LD.sum$prop.LD[which(LD.sum$prop.LD$Group=="Across"),c(1:3)]
+LD.within$Grt0.1 = 1-LD.within$Thres01
+LD.across$Grt0.1 = 1-LD.across$Thres01
+
+round(range(LD.within$Grt0.1)*100,2)
+round(range(LD.across$Grt0.1)*100,2)
+
+remove(Pmrkrs,LD.within,LD.across)
+
+# FIGURE 2:
+par(mar=c(4,4,1,1.5))
+
+barplot(height=-0.01,xlim=c(0,116),ylim=c(0,0.06),xlab = "Chromosome",ylab="Proportion",main="",yaxt="n",xpd=FALSE)
+axis(2,at=seq(from=0,to=0.06,by=0.005),las=2,cex.axis=0.85)
+grid(nx = NA,ny = 12,lty = 2, col = "black", lwd = 1)
+
+s=0
+for(i in chr){
+  #proportion of markers on chromosome
+  barplot(height = array(dim(map[which(map$V1==i),])[1]/dim(map)[1]),space=s,add=TRUE,xlim=c(0,116),ylim=c(0,0.06),col=clrs[3],xlab="",ylab="",main="",yaxt="n",xpd=FALSE)
+  s = s+1
+  #proportion of stacked LD within chromosome
+  LD = matrix(unlist(round(LD.sum$prop.LD[which(LD.sum$prop.LD$Chr==i & LD.sum$prop.LD$Group=="Within"),3:12],5)),nrow=1)
+  barplot(height = array(c(1-LD[1,1])),space=s,add=TRUE,xlim=c(0,116),ylim=c(0,0.06),col=clrs[1],names.arg=i,xlab="",ylab="",main="",yaxt="n",xpd=FALSE)
+  barplot(height = array(c(1-LD[1,1])),space=s,add=TRUE,xlim=c(0,116),ylim=c(0,0.06),col="white",angle=c(45),density=c(10),xlab="",ylab="",main="",yaxt="n",xpd=FALSE)
+  s = s+1
+  #proportion of stacked LD across chromosome
+  LD = matrix(unlist(round(LD.sum$prop.LD[which(LD.sum$prop.LD$Chr==i & LD.sum$prop.LD$Group=="Across"),3:12],5)),nrow=1)
+  barplot(height = array(c(1-LD[1,1])),space=s,add=TRUE,xlim=c(0,116),ylim=c(0,0.06),col=clrs[2],xlab="",ylab="",main="",yaxt="n",xpd=FALSE)
+  barplot(height = array(c(1-LD[1,1])),space=s,add=TRUE,xlim=c(0,116),ylim=c(0,0.06),col="black",angle=45,density = 10,xlab="",ylab="",main="",yaxt="n",xpd=FALSE)
+  s = s+2
+}
+
+legend("topright",legend=c(expression(P*""[markers]),expression(r^2*""[within]~"\u2265 0.1"),expression(r^2*""[across]~"\u2265 0.1")),
+       fill = clrs[c(3,1,2)],inset=c(-0.01,0),xpd=TRUE)
+legend("topright",legend=c(expression(P*""[markers]),expression(r^2*""[within]~"\u2265 0.1"),expression(r^2*""[across]~"\u2265 0.1")),
+       bty="n",fill = c("black","white","black"),angle=c(NA,45,45),density=c(NA,20,20),inset=c(-0.01,0),xpd=TRUE)
+
+remove(LD,LD.sum,map,chr,clrs,i,s)

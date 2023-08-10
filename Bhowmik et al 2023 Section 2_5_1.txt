@@ -1,0 +1,173 @@
+#Bhowmik et al. 2023 Section 2.5.1 - Intrapopulation Measures
+
+# Polymorphic loci statistics by population
+## Demonstrating how PPL.RData was created:
+### Full marker dataset
+library(snpStats)
+load("Comb11KFull.RData") ## brings in file called "Comb", file not provided
+
+pop = array(c("AD","AN","AR","GV","HH","LM","SH","SM",
+              "ADI","ANI","ARI","GVI","LMI","SHI","SMI","F1BB",
+              "F1BC","F1CC"))
+
+MAF.pop = matrix(numeric((dim(Comb)[2]*dim(pop))),ncol=dim(pop))
+colnames(MAF.pop) = pop
+PPL.stats = data.frame(Pop = pop,PPL = NA)
+for(i in pop){
+  MAF.pop[,i] = col.summary(Comb[which(row.names(Comb)%in%array(fam[which(fam$pedigree==i),"member"])),])$MAF
+  PPL.stats[which(PPL.stats$Pop==i),"PPL"] = round((dim(MAF.pop[which(MAF.pop[,i]>0.05),])[1]/dim(Comb)[2]),4)
+}
+remove(i,Comb)
+
+### boot.PPL function
+boot.PPL = function (dat = dat, nboot = 100, quant = c(0.025, 0.5, 0.975), dig = 4, ...){
+  cl <- match.call()
+  nloc <- dim(dat)[1]
+  npop <- dim(dat)[2]
+  my.boot.PPL <- matrix(numeric(nboot * npop), ncol = npop)
+  for (i in 1:nboot) {
+    x <- sample(nloc, replace = TRUE)
+    my.boot.PPL[i, ] <- array(unlist(lapply(1:npop,function(i){dim(dat[which(dat[x,i]>0.05),i,drop=FALSE])[1]/nloc})))
+  }
+  ll <- apply(my.boot.PPL, 2, stats::quantile, quant[1], na.rm = TRUE)
+  ml <- apply(my.boot.PPL, 2, stats::quantile, quant[2], na.rm = TRUE)
+  hl <- apply(my.boot.PPL, 2, stats::quantile, quant[3], na.rm = TRUE)
+  return(list(call = cl, PPL.ci = data.frame(pop = array(colnames(dat)), ll = round(ll,digits = dig), ml = round(ml,digits = dig), hl = round(hl,digits = dig))))
+}
+
+### Run the bootstrap function on the data:
+out.ppl = boot.PPL(MAF.pop,nboot=1000)
+PPL.Full = list(MAF.pop=MAF.pop,PPL.stats=PPL.stats,out.ppl=out.ppl)
+remove(MAF.pop,PPL.stats,out.ppl,Map,fam)
+
+### Pruned marker set
+CombP = read.plink("PrAllComb11K.bed","PrAllComb11K.bim","PrAllComb11K.fam") ## brings in pruned set, files not provided
+Comb = CombP$genotypes
+
+MAF.pop = matrix(numeric((dim(Comb)[2]*dim(pop))),ncol=dim(pop))
+colnames(MAF.pop) = pop
+PPL.stats = data.frame(Pop = pop,PPL = NA)
+for(i in pop){
+  MAF.pop[,i] = col.summary(Comb[which(row.names(Comb)%in%array(fam[which(fam$pedigree==i),"member"])),])$MAF
+  PPL.stats[which(PPL.stats$Pop==i),"PPL"] = round((dim(MAF.pop[which(MAF.pop[,i]>0.05),])[1]/dim(Comb)[2]),4)
+}
+remove(i,Comb,CombP,pop)
+
+### Using boot.PPL function again
+out.ppl = boot.PPL(MAF.pop,nboot=1000)
+PPL.Pr = list(MAF.pop=MAF.pop,PPL.stats=PPL.stats,out.ppl=out.ppl)
+remove(MAF.pop,PPL.stats,out.ppl)
+
+### How PPL.RData was created:
+#save(PPL.Full,PPL.Pr,file=paste0(getwd(),"/PPL.RData"))
+#remove(PPL.Full,PPL.Pr,boot.PPL)
+
+# Hierfstat Analyses - Basic Diversity & Structure
+## Demonstrating how BSTAT.RData was created:
+library(hierfstat)
+load("Genos_HierfstatFormat.RData") #brings in 4 Hierfstat variables as described in manuscript, file not provided
+
+### Basic Diversity Statistics
+b.stat.F = basic.stats(GenoH.F) #all animals, all markers
+b.stat.FPB = basic.stats(GenoH.FPB) #only purebreds, all markers
+b.stat.Pr = basic.stats(GenoH.Pr) #all animals, pruned markers
+b.stat.PrPB = basic.stats(GenoH.PrPB) #only purebreds, pruned markers
+
+### boot.bstat function:
+boot.bstat = function (dat = dat, nboot = 100, quant = c(0.025, 0.5, 0.975), 
+                 dig = 4, ...){
+  cl <- match.call()
+  Ho <- dat$Ho
+  Hs <- dat$Hs
+  nloc <- dim(Hs)[1]
+  npop <- dim(Hs)[2]
+  my.boot.Ho <- matrix(numeric(nboot * npop), ncol = npop)
+  my.boot.Hs <- matrix(numeric(nboot * npop), ncol = npop)
+  my.boot.Fis <- matrix(numeric(nboot * npop), ncol = npop)
+  for (i in 1:nboot) {
+    x <- sample(nloc, replace = TRUE)
+    my.boot.Ho[i, ] <- apply(Ho[x, ],2,mean,na.rm=TRUE)
+    my.boot.Hs[i, ] <- apply(Hs[x, ],2,mean,na.rm=TRUE)
+    my.boot.Fis[i, ] <- 1 - (colSums(Ho[x, ], na.rm = TRUE)/colSums(Hs[x, ], na.rm = TRUE))
+  }
+  ll_Ho <- apply(my.boot.Ho, 2, stats::quantile, quant[1], na.rm = TRUE)
+  ml_Ho <- apply(my.boot.Ho, 2, stats::quantile, quant[2], na.rm = TRUE)
+  hl_Ho <- apply(my.boot.Ho, 2, stats::quantile, quant[3], na.rm = TRUE)
+  ll_Hs <- apply(my.boot.Hs, 2, stats::quantile, quant[1], na.rm = TRUE)
+  ml_Hs <- apply(my.boot.Hs, 2, stats::quantile, quant[2], na.rm = TRUE)
+  hl_Hs <- apply(my.boot.Hs, 2, stats::quantile, quant[3], na.rm = TRUE)
+  ll_Fis <- apply(my.boot.Fis, 2, stats::quantile, quant[1], na.rm = TRUE)
+  ml_Fis <- apply(my.boot.Fis, 2, stats::quantile, quant[2], na.rm = TRUE)
+  hl_Fis <- apply(my.boot.Fis, 2, stats::quantile, quant[3], na.rm = TRUE)
+  
+  return(list(call = cl, 
+              Ho.ci = data.frame(pop = array(colnames(Ho)), ll = round(ll_Ho,digits = dig), ml = round(ml_Ho,digits = dig), hl = round(hl_Ho,digits = dig)),
+              Hs.ci = data.frame(pop = array(colnames(Hs)), ll = round(ll_Hs,digits = dig), ml = round(ml_Hs,digits = dig), hl = round(hl_Hs,digits = dig)), 
+              Fis.ci = data.frame(pop = array(colnames(Hs)), ll = round(ll_Fis,digits = dig), ml = round(ml_Fis,digits = dig), hl = round(hl_Fis,digits = dig))))
+}
+
+### Use boot.bstat function
+bstatF.ci = boot.bstat(b.stat.F,nboot=1000) #all animals, all markers
+bstatFPB.ci = boot.bstat(b.stat.FPB,nboot=1000) #only purebreds, all markers
+bstatPr.ci = boot.bstat(b.stat.Pr,nboot=1000) #all animals, pruned markers
+bstatPrPB.ci = boot.bstat(b.stat.PrPB,nboot=1000) #only purebreds, pruned markers
+
+### Create BSTAT lists per population group and marker set type
+BSTAT.F = list(b.stat.F=b.stat.F,bstatF.ci=bstatF.ci)
+BSTAT.FPB = list(b.stat.FPB=b.stat.FPB,bstatFPB.ci=bstatFPB.ci)
+BSTAT.PR = list(b.stat.Pr=b.stat.Pr,bstatPr.ci=bstatPr.ci)
+BSTAT.PRPB = list(b.stat.PrPB=b.stat.PrPB,bstatPrPB.ci=bstatPrPB.ci)
+
+### Create overarching BSTAT list
+BSTAT = list(BSTAT.F=BSTAT.F,BSTAT.FPB=BSTAT.FPB,BSTAT.PR=BSTAT.PR,BSTAT.PRPB=BSTAT.PRPB)
+
+### How BSTAT.RData was created:
+#save(BSTAT,file = paste0(getwd(),"/BSTAT.RData"))
+#remove(b.stat.F,b.stat.FPB,b.stat.Pr,b.stat.PrPB,bstatF.ci,bstatFPB.ci,bstatPr.ci,bstatPrPB.ci,
+       BSTAT.F,BSTAT.FPB,BSTAT.PR,BSTAT.PRPB,BSTAT,boot.bstat)
+
+# Allelic Richness Statistics
+## Demonstrating how Ar.RData was created:
+
+### Running allelic richness analyses
+all.rich.F = allelic.richness(GenoH.F) #all animals, all markers
+all.rich.FPB = allelic.richness(GenoH.FPB) #only purebreds, all markers
+all.rich.Pr = allelic.richness(GenoH.Pr) #all animals, pruned markers
+all.rich.PrPB = allelic.richness(GenoH.PrPB) #only purebreds, pruned markers
+
+### boot.allrich function
+boot.allrich = function (dat = dat, nboot = 100, quant = c(0.025, 0.5, 0.975), dig = 4, ...){
+  cl <- match.call()
+  nloc <- dim(dat)[1]
+  npop <- dim(dat)[2]
+  my.boot.AR <- matrix(numeric(nboot * npop), ncol = npop)
+  for (i in 1:nboot) {
+    x <- sample(nloc, replace = TRUE)
+    my.boot.AR[i, ] <- apply(dat[x, ],2,mean,na.rm=TRUE)
+  }
+  ll <- apply(my.boot.AR, 2, stats::quantile, quant[1], na.rm = TRUE)
+  ml <- apply(my.boot.AR, 2, stats::quantile, quant[2], na.rm = TRUE)
+  hl <- apply(my.boot.AR, 2, stats::quantile, quant[3], na.rm = TRUE)
+  return(list(call = cl, AR.ci = data.frame(pop = array(colnames(dat)), ll = round(ll,digits = dig), ml = round(ml,digits = dig), hl = round(hl,digits = dig))))
+}
+
+### Use boot.allrich function
+all.richF.ci = boot.allrich(all.rich.F$Ar,nboot=1000) #all animals, all markers
+all.richFPB.ci = boot.allrich(all.rich.FPB$Ar,nboot=1000) #only purebreds, all markers
+all.richPr.ci = boot.allrich(all.rich.Pr$Ar,nboot=1000) #all animals, pruned markers
+all.richPrPB.ci = boot.allrich(all.rich.PrPB$Ar,nboot=1000) #only purebreds, pruned markers
+
+### Create Ar lists per population group and marker set type
+Ar.F = list(all.rich.F=all.rich.F,all.richF.ci=all.richF.ci)
+Ar.FPB = list(all.rich.FPB=all.rich.FPB,all.richFPB.ci=all.richFPB.ci)
+Ar.PR = list(all.rich.Pr=all.rich.Pr,all.richPr.ci=all.richPr.ci)
+Ar.PRPB = list(all.rich.PrPB=all.rich.PrPB,all.richPrPB.ci=all.richPrPB.ci)
+
+### Create overarching Ar list
+Ar = list(Ar.F=Ar.F,Ar.FPB=Ar.FPB,Ar.PR=Ar.PR,Ar.PRPB=Ar.PRPB)
+
+### How Ar.RData was created:
+#save(Ar,file = paste0(getwd(),"/Output/Ar.RData"))
+#remove(all.rich.F,all.rich.FPB,all.rich.Pr,all.rich.PrPB,
+       all.richF.ci,all.richFPB.ci,all.richPr.ci,all.richPrPB.ci,
+       Ar.F,Ar.FPB,Ar.PR,Ar.PRPB,Ar,boot.allrich)

@@ -1,0 +1,316 @@
+#Bhowmik et al. 2023 - Section 3.1 Table 1 + Section 3.2 Intrapopulation Measures with Figures
+# Note: Output was used to create Supplementary File S1
+# Note: assumes these files are in current working directory
+
+# Section 3.1 Table 1 Data:
+## Basic Statistics (het, div, Fis, marker FST)
+load("BSTAT.RData")
+
+### Full marker set - overall parameters estimated
+#### Purebreds only
+BSTAT$BSTAT.FPB$b.stat.FPB$overall
+##### Ho      Hs      Ht     Dst     Htp    Dstp     Fst    Fstp     Fis    Dest 
+##### 0.3565  0.3560  0.4009  0.0449  0.4073  0.0513  0.1119  0.1259 -0.0012  0.0796 
+
+#### All populations
+BSTAT$BSTAT.F$b.stat.F$overall
+##### Ho      Hs      Ht     Dst     Htp    Dstp     Fst    Fstp     Fis    Dest 
+##### 0.3833  0.3629  0.3986  0.0357  0.4007  0.0378  0.0897  0.0944 -0.0564  0.0594 
+
+### Pruned marker set - overall parameters estimated
+#### Purebreds only
+BSTAT$BSTAT.PRPB$b.stat.PrPB$overall
+##### Ho      Hs      Ht     Dst     Htp    Dstp     Fst    Fstp     Fis    Dest 
+##### 0.3718  0.3713  0.4118  0.0405  0.4175  0.0463  0.0983  0.1108 -0.0014  0.0736 
+
+#### All populations
+BSTAT$BSTAT.PR$b.stat.Pr$overall
+##### Ho      Hs      Ht     Dst     Htp    Dstp     Fst    Fstp     Fis    Dest 
+##### 0.3965  0.3756  0.4090  0.0334  0.4109  0.0353  0.0816  0.0859 -0.0556  0.0566 
+
+remove(BSTAT)
+
+# Section 3.2 Data Summary with Figure Code
+
+## PPL & Ar General Summary Information:
+### PPL
+load("PPL.RData")
+
+#### Full marker set
+data.frame(Pop = PPL.Full$out.ppl$PPL.ci$pop,
+           Int = paste0(PPL.Full$out.ppl$PPL.ci$ml," (",PPL.Full$out.ppl$PPL.ci$ll,", ",PPL.Full$out.ppl$PPL.ci$hl,")"))
+
+#### Pruned marker set
+data.frame(Pop = PPL.Pr$out.ppl$PPL.ci$pop,
+           Int = paste0(PPL.Pr$out.ppl$PPL.ci$ml," (",PPL.Pr$out.ppl$PPL.ci$ll,", ",PPL.Pr$out.ppl$PPL.ci$hl,")"))
+
+#### Population summary of low MAF - nonpruned
+    Pop = array(colnames(PPL.Full$MAF.pop))
+    for(X in 1:dim(PPL.Full$MAF.pop)[2]){
+      print(paste0(Pop[X],": ",
+                   dim(PPL.Full$MAF.pop[which(PPL.Full$MAF.pop[,X]<0.05),X,drop=FALSE])[1]," markers below 0.05, ",
+               dim(PPL.Full$MAF.pop[which(PPL.Full$MAF.pop[,X]==0),X,drop=FALSE])[1]," markers equal to zero."))
+    }
+    #AD Cattle:
+    (1521/2594)*100 #58.64%
+    #SH Cattle:
+    (999/1789)*100 #55.84%
+
+    #Population summary of low MAF - pruned
+    Pop = array(colnames(PPL.Pr$MAF.pop))
+    for(X in 1:dim(PPL.Pr$MAF.pop)[2]){
+      print(paste0(Pop[X],": ",
+                   dim(PPL.Pr$MAF.pop[which(PPL.Pr$MAF.pop[,X]<0.05),X,drop=FALSE])[1]," markers below 0.05, ",
+                   dim(PPL.Pr$MAF.pop[which(PPL.Pr$MAF.pop[,X]==0),X,drop=FALSE])[1]," markers equal to zero."))
+    }
+    #AD Cattle:
+    (564/994)*100 #56.74%
+    #SH Cattle:
+    (330/625)*100 #52.80%
+
+remove(PPL.Full) #keep pruned set for figure
+
+### Ar
+load("Ar.RData")
+
+#### Full marker set
+##### Purebreds only
+data.frame(Pop = Ar$Ar.FPB$all.richFPB.ci$AR.ci$pop,
+           Int = paste0(Ar$Ar.FPB$all.richFPB.ci$AR.ci$ml," (",Ar$Ar.FPB$all.richFPB.ci$AR.ci$ll,", ",Ar$Ar.FPB$all.richFPB.ci$AR.ci$hl,")"))
+Ar$Ar.FPB$all.rich.FPB$min.all #rarefraction = 24
+
+##### All populations
+data.frame(Pop = Ar$Ar.F$all.richF.ci$AR.ci$pop,
+           Int = paste0(Ar$Ar.F$all.richF.ci$AR.ci$ml," (",Ar$Ar.F$all.richF.ci$AR.ci$ll,", ",Ar$Ar.F$all.richF.ci$AR.ci$hl,")"))
+Ar$Ar.F$all.rich.F$min.all #rarefraction = 6
+
+#### Pruned marker set
+##### Purebreds only
+data.frame(Pop = Ar$Ar.PRPB$all.richPrPB.ci$AR.ci$pop,
+           Int = paste0(Ar$Ar.PRPB$all.richPrPB.ci$AR.ci$ml," (",Ar$Ar.PRPB$all.richPrPB.ci$AR.ci$ll,", ",Ar$Ar.PRPB$all.richPrPB.ci$AR.ci$hl,")"))
+Ar$Ar.PRPB$all.rich.PrPB$min.all #rarefraction = 24
+
+##### All populations
+data.frame(Pop = Ar$Ar.PR$all.richPr.ci$AR.ci$pop,
+           Int = paste0(Ar$Ar.PR$all.richPr.ci$AR.ci$ml," (",Ar$Ar.PR$all.richPr.ci$AR.ci$ll,", ",Ar$Ar.PR$all.richPr.ci$AR.ci$hl,")"))
+Ar$Ar.PR$all.rich.Pr$min.all #rarefraction = 6
+
+Pr.Ar = Ar$Ar.PR #to use in figure
+remove(Ar)
+
+## FIGURE 3 - PPL + Ar
+library(dplyr)
+layout(matrix(c(1,2),nrow=1))
+par(mar=c(4.1,4.1,3.1,1))
+
+pop.names = array(c(expression("F"*""[1]~"CxC"),expression("F"*""[1]~"BxC"),expression("F"*""[1]~"BxB"),
+                    "SMI","SHI","LMI","GVI","ARI","ANI","ADI",
+                    "SM","SH","LM","HH","GV","AR","AN","AD"))
+clrs = array(c("darkred","#005643","#005643","darkgoldenrod","#005643","darkgoldenrod","#005643","darkgoldenrod",
+               "darkred","#005643","#005643","darkgoldenrod","darkgoldenrod","#005643","darkgoldenrod","#005643","black","darkgoldenrod")) 
+
+### PPL
+y = c(1,18)
+x = c(0.7,1)
+plot(x,y,type="n",main="",xlab="Proportion",ylab="Primary Breed Type",xaxt="n",yaxt="n")
+axis(1,at=seq(from=0,to=1,by=0.05))
+abline(v = seq(from=0,to=1,by=0.05),lty = 2, col = "black", lwd = 1)
+
+axis(2,at=c(1:18),labels=pop.names,las=2)
+abline(h = c(1:18),lty = 2, col = "lightgrey", lwd = 1)
+
+data = PPL.Pr$out.ppl$PPL.ci
+data$y = rev(c(1:18))
+points(data[,c("ml","y")],pch=19,col=clrs)
+arrows(x0 = data$hl,x1 = data$ll, y0 = data$y,y1=data$y, angle = 90, code = 3, length = 0.1,col=clrs) #SE bars
+mtext("A)",line = 1,adj=0)
+
+### Allelic Richness
+par(mar=c(4.1,1.1,3.1,1))
+y = c(1,18)
+x = c(1.6,1.9)
+plot(x,y,type="n",main="",xlab="Number of Alleles",ylab="",xaxt="n",yaxt="n")
+axis(1,at=seq(from=1.6,to=1.9,by=0.05))
+abline(v = seq(from=1.6,to=1.9,by=0.05),lty = 2, col = "black", lwd = 1)
+
+abline(h = c(1:18),lty = 2, col = "lightgrey", lwd = 1)
+
+pop1 = array(c("F1CC","F1BC","F1BB",
+              "SMI","SHI","LMI","GVI","ARI","ANI","ADI",
+              "SM","SH","LM","HH","GV","AR","AN","AD"))
+
+data = Pr.Ar$all.richPr.ci$AR.ci
+data = data %>% arrange(factor(pop,levels = pop1))
+data$y = c(1:18)
+points(data[,c("ml","y")],pch=19,col=rev(clrs))
+arrows(x0 = data$hl,x1 = data$ll, y0 = data$y,y1=data$y, angle = 90, code = 3, length = 0.1,col=rev(clrs)) #SE bars
+mtext("B)",line = 1,adj=0)
+
+
+## BSTAT General Summary Information with Figure Code
+load("BSTAT.RData")
+  
+### Observed heterozygosity
+#### Full marker set
+##### Purebreds only
+data.frame(Pop = BSTAT$BSTAT.FPB$bstatFPB.ci$Ho.ci$pop,
+           Int = paste0(BSTAT$BSTAT.FPB$bstatFPB.ci$Ho.ci$ml," (",BSTAT$BSTAT.FPB$bstatFPB.ci$Ho.ci$ll,", ",BSTAT$BSTAT.FPB$bstatFPB.ci$Ho.ci$hl,")"))
+
+##### All populations
+data.frame(Pop = BSTAT$BSTAT.F$bstatF.ci$Ho.ci$pop,
+           Int = paste0(BSTAT$BSTAT.F$bstatF.ci$Ho.ci$ml," (",BSTAT$BSTAT.F$bstatF.ci$Ho.ci$ll,", ",BSTAT$BSTAT.F$bstatF.ci$Ho.ci$hl,")"))
+
+#### Pruned marker set
+##### Purebreds only
+data.frame(Pop = BSTAT$BSTAT.PRPB$bstatPrPB.ci$Ho.ci$pop,
+           Int = paste0(BSTAT$BSTAT.PRPB$bstatPrPB.ci$Ho.ci$ml," (",BSTAT$BSTAT.PRPB$bstatPrPB.ci$Ho.ci$ll,", ",BSTAT$BSTAT.PRPB$bstatPrPB.ci$Ho.ci$hl,")"))
+
+##### All populations
+data.frame(Pop = BSTAT$BSTAT.PR$bstatPr.ci$Ho.ci$pop,
+           Int = paste0(BSTAT$BSTAT.PR$bstatPr.ci$Ho.ci$ml," (",BSTAT$BSTAT.PR$bstatPr.ci$Ho.ci$ll,", ",BSTAT$BSTAT.PR$bstatPr.ci$Ho.ci$hl,")"))
+
+### Gene diversity (Hs)
+#### Full marker set
+##### Purebreds only
+data.frame(Pop = BSTAT$BSTAT.FPB$bstatFPB.ci$Hs.ci$pop,
+           Int = paste0(BSTAT$BSTAT.FPB$bstatFPB.ci$Hs.ci$ml," (",BSTAT$BSTAT.FPB$bstatFPB.ci$Hs.ci$ll,", ",BSTAT$BSTAT.FPB$bstatFPB.ci$Hs.ci$hl,")"))
+
+##### All populations
+data.frame(Pop = BSTAT$BSTAT.F$bstatF.ci$Hs.ci$pop,
+           Int = paste0(BSTAT$BSTAT.F$bstatF.ci$Hs.ci$ml," (",BSTAT$BSTAT.F$bstatF.ci$Hs.ci$ll,", ",BSTAT$BSTAT.F$bstatF.ci$Hs.ci$hl,")"))
+
+#### Pruned marker set
+##### Purebreds only
+data.frame(Pop = BSTAT$BSTAT.PRPB$bstatPrPB.ci$Hs.ci$pop,
+           Int = paste0(BSTAT$BSTAT.PRPB$bstatPrPB.ci$Hs.ci$ml," (",BSTAT$BSTAT.PRPB$bstatPrPB.ci$Hs.ci$ll,", ",BSTAT$BSTAT.PRPB$bstatPrPB.ci$Hs.ci$hl,")"))
+
+##### All populations
+data.frame(Pop = BSTAT$BSTAT.PR$bstatPr.ci$Hs.ci$pop,
+           Int = paste0(BSTAT$BSTAT.PR$bstatPr.ci$Hs.ci$ml," (",BSTAT$BSTAT.PR$bstatPr.ci$Hs.ci$ll,", ",BSTAT$BSTAT.PR$bstatPr.ci$Hs.ci$hl,")"))
+
+### Inbreeding coefficients.
+#### Full marker set
+##### purebreds only
+data.frame(Pop = BSTAT$BSTAT.FPB$bstatFPB.ci$Fis.ci$pop,
+           Int = paste0(BSTAT$BSTAT.FPB$bstatFPB.ci$Fis.ci$ml," (",BSTAT$BSTAT.FPB$bstatFPB.ci$Fis.ci$ll,", ",BSTAT$BSTAT.FPB$bstatFPB.ci$Fis.ci$hl,")"))
+
+##### All populations
+data.frame(Pop = BSTAT$BSTAT.F$bstatF.ci$Fis.ci$pop,
+           Int = paste0(BSTAT$BSTAT.F$bstatF.ci$Fis.ci$ml," (",BSTAT$BSTAT.F$bstatF.ci$Fis.ci$ll,", ",BSTAT$BSTAT.F$bstatF.ci$Fis.ci$hl,")"))
+
+#### Pruned marker set
+##### Purebreds only
+data.frame(Pop = BSTAT$BSTAT.PRPB$bstatPrPB.ci$Fis.ci$pop,
+           Int = paste0(BSTAT$BSTAT.PRPB$bstatPrPB.ci$Fis.ci$ml," (",BSTAT$BSTAT.PRPB$bstatPrPB.ci$Fis.ci$ll,", ",BSTAT$BSTAT.PRPB$bstatPrPB.ci$Fis.ci$hl,")"))
+
+##### All populations
+data.frame(Pop = BSTAT$BSTAT.PR$bstatPr.ci$Fis.ci$pop,
+           Int = paste0(BSTAT$BSTAT.PR$bstatPr.ci$Fis.ci$ml," (",BSTAT$BSTAT.PR$bstatPr.ci$Fis.ci$ll,", ",BSTAT$BSTAT.PR$bstatPr.ci$Fis.ci$hl,")"))
+
+Pr.BSTAT = BSTAT$BSTAT.PR #to use in figure
+remove(BSTAT)
+
+
+### Population bootstrapped FST
+load("GDIST.RData")
+Fst.F = GDIST$GDIST.F$Fst.F$Beta
+Fst.FPB = GDIST$GDIST.FPB$Fst.FPB$Beta
+Fst.Pr = GDIST$GDIST.Pr$Fst.Pr$Beta
+Fst.PrPB = GDIST$GDIST.PrPB$Fst.PrPB$Beta
+
+#### Full marker set
+##### Purebred only
+data.frame(Pop = names(Fst.FPB$betaiovl),
+           Int = paste0(round(Fst.FPB$betaiovl,4)," (",round(Fst.FPB$ci[1,1:8],4),", ",round(Fst.FPB$ci[2,1:8],4),")"))
+
+##### All populations
+data.frame(Pop = names(Fst.F$betaiovl),
+           Int = paste0(round(Fst.F$betaiovl,4)," (",round(Fst.F$ci[1,1:18],4),", ",round(Fst.F$ci[2,1:18],4),")"))
+
+#### Pruned marker set
+##### Purebred only
+data.frame(Pop = names(Fst.PrPB$betaiovl),
+           Int = paste0(round(Fst.PrPB$betaiovl,4)," (",round(Fst.PrPB$ci[1,1:8],4),", ",round(Fst.PrPB$ci[2,1:8],4),")"))
+
+##### All populations
+data.frame(Pop = names(Fst.Pr$betaiovl),
+           Int = paste0(round(Fst.Pr$betaiovl,4)," (",round(Fst.Pr$ci[1,1:18],4),", ",round(Fst.Pr$ci[2,1:18],4),")"))
+
+Pr.FST = GDIST$GDIST.Pr$Fst.Pr$Beta #to use later in figure
+remove(GDIST, Fst.F, Fst.FPB, Fst.Pr, Fst.PrPB)
+
+## FIGURE 4 and 5 - BSTAT + FST parameters
+library(dplyr)
+
+### FIGURE 4 - Ho + Hs
+layout(matrix(c(1,2),nrow=1))
+par(mar=c(4.1,4.1,3.1,1))
+
+#### Observed het
+y = c(1,18)
+x = c(0.3,0.45)
+plot(x,y,type="n",main="",xlab=expression("H"*""[O]~"Proportion"),ylab="Primary Breed Type",xaxt="n",yaxt="n")
+axis(1,at=seq(from=0.3,to=0.45,by=0.05))
+abline(v = seq(from=0.3,to=0.45,by=0.05),lty = 2, col = "black", lwd = 1)
+axis(2,at=c(1:18),labels=pop.names,las=2)
+abline(h = c(1:18),lty = 2, col = "lightgrey", lwd = 1)
+data = Pr.BSTAT$bstatPr.ci$Ho.ci
+data = data %>% arrange(factor(pop,levels = pop1))
+data$y = c(1:18)
+points(data[,c("ml","y")],pch=19,col=rev(clrs))
+arrows(x0 = data$hl,x1 = data$ll, y0 = data$y,y1=data$y, angle = 90, code = 3, length = 0.1,col=rev(clrs)) #SE bars
+
+mtext("A)",line = 1,adj=0)
+
+#### Gene diversity
+par(mar=c(4.1,1.1,3.1,1))
+y = c(1,18)
+x = c(0.3,0.45)
+plot(x,y,type="n",main="",xlab=expression("H"*""[S]~"Proportion"),ylab="",xaxt="n",yaxt="n")
+axis(1,at=seq(from=0.3,to=0.45,by=0.05))
+abline(v = seq(from=0.3,to=0.45,by=0.05),lty = 2, col = "black", lwd = 1)
+abline(h = c(1:18),lty = 2, col = "lightgrey", lwd = 1)
+data = Pr.BSTAT$bstatPr.ci$Hs.ci
+data = data %>% arrange(factor(pop,levels = pop1))
+data$y = c(1:18)
+points(data[,c("ml","y")],pch=19,col=rev(clrs))
+arrows(x0 = data$hl,x1 = data$ll, y0 = data$y,y1=data$y, angle = 90, code = 3, length = 0.1,col=rev(clrs)) #SE bars
+
+mtext("B)",line = 1,adj=0)
+
+### FIGURE 5 - Fis + Fst
+layout(matrix(c(1,2),nrow=1))
+par(mar=c(4.1,4.1,3.1,1))
+
+#### Fis
+y = c(1,18)
+x = c(-0.3,0.1)
+plot(x,y,type="n",main="",xlab=expression("F"*""[IS]),ylab="Primary Breed Type",xaxt="n",yaxt="n")
+axis(1,at=round(seq(from=-0.3,to=0.1,by=0.05),2))
+abline(v = round(seq(from=-0.3,to=0.1,by=0.05),2),lty = 2, col = "black", lwd = 1)
+abline(v = 0.00,lty=1,col="red",lwd=1)
+axis(2,at=c(1:18),labels=pop.names,las=2)
+abline(h = c(1:18),lty = 2, col = "lightgrey", lwd = 1)
+data = Pr.BSTAT$bstatPr.ci$Fis.ci
+data = data %>% arrange(factor(pop,levels = pop1))
+data$y = c(1:18)
+points(data[,c("ml","y")],pch=19,col=rev(clrs))
+arrows(x0 = data$hl,x1 = data$ll, y0 = data$y,y1=data$y, angle = 90, code = 3, length = 0.1,col=rev(clrs)) #SE bars
+mtext("A)",line = 1,adj=0)
+
+#### Fst
+par(mar=c(4.1,1.1,3.1,1))
+y = c(1,18)
+x = c(0,0.25)
+plot(x,y,type="n",main="",xlab=expression("F"*""[ST]),ylab="",xaxt="n",yaxt="n")
+axis(1,at=seq(from=0,to=0.25,by=0.05))
+abline(v = seq(from=0,to=0.25,by=0.05),lty = 2, col = "black", lwd = 1)
+abline(h = c(1:18),lty = 2, col = "lightgrey", lwd = 1)
+data = rbind(Pr.FST$betaiovl,Pr.FST$ci[,1:18])
+data = data.frame(ml = data[1,pop1],ll = data[2,pop1],hl=data[3,pop1])
+data$y = c(1:18)
+points(data[,c("ml","y")],pch=19,col=rev(clrs))
+arrows(x0 = data$hl,x1 = data$ll, y0 = data$y,y1=data$y, angle = 90, code = 3, length = 0.1,col=rev(clrs)) #SE bars
+mtext("B)",line = 1,adj=0)
+
+remove(clrs,pop1,pop.names,x,y,data,PPL.Pr,Pr.Ar,Pr.BSTAT,Pr.FST)

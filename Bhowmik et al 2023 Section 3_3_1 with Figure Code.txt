@@ -1,0 +1,196 @@
+#Bhowmik et al. 2023 - Section 3.3.1 + Figure 6
+
+#Note: assumes these files are in current working directory
+load("GDIST.RData")
+library(ape)
+
+## Function to plot and compare two population groups fit to tree based on distance parameter used:
+my.plot = function(D1,D2,label="Pairwise Distance"){
+  layout(matrix(1:4,2,2),heights = c(2,1))
+  #D1 plots
+    geo1 = factor(c("A","B","B","C","B","B","C","C")) #based on population order in Distance matrix
+    (mycol1 = c("darkred","#005643","#dda301")[geo1])
+    par(mar = c(0,4.1,4.1,0))
+    theTree1 = ladderize(nj(D1))
+    plot(theTree1,tip.color = mycol1,cex=1.2,type="unrooted",rotate.tree=90,label.offset = 0.1,lab4ut="axial")
+    mtext("A)",line = 1,adj=0)
+  
+    par(mar = c(5.1,4.1,4.1,2.1))
+    x = as.vector(as.dist(D1))
+    y = as.vector(as.dist(cophenetic(theTree1)))
+    lmax = max(round(max(x),2)+0.01,round(max(y),2)+0.01)
+    plot(x, y, xlim = c(0,lmax), ylim=c(0,lmax), yaxt="n",xlab=label, ylab="Tree Pairwise Distance", pch=20, cex=2)
+    axis(2,las=2)
+    abline(lm(y~x), col="red")
+    mtext("B)",line = 1,adj=0)
+  
+  #D2 plots
+    geo2 = factor(c("A","B","B","C","B","B","B","A","B","O","C","C","C","B","C","B","C","C")) #based on population order in Distance matrix
+    (mycol2 = c("darkred","#005643","#dda301","black")[geo2])
+    
+    par(mar = c(0,4.1,4.1,0))
+    theTree2 = ladderize(nj(D2),FALSE)
+    plot(theTree2,tip.color = mycol2,cex=1.2,type="unrooted",rotate.tree=90)
+    mtext("C)",line = 1,adj=0)
+    
+    par(mar = c(5.1,4.1,4.1,2.1))
+    x = as.vector(as.dist(D2))
+    y = as.vector(as.dist(cophenetic(theTree2)))
+    lmax = max(round(max(x),2)+0.01,round(max(y),2)+0.01)
+    plot(x, y, xlim = c(0,lmax), ylim=c(0,lmax), yaxt="n",xlab=label, ylab="Tree Pairwise Distance", pch=20, cex=2)
+    axis(2,las=2)
+    abline(lm(y~x), col="red")
+    mtext("D)",line = 1,adj=0)
+}
+
+## Comparison of distances to trees (only pruned markers)
+
+### Standard distance
+#### Purebred only PBT
+D1 = GDIST$GDIST.PrPB$Genet.Dist.PrPB$Ds
+theTree1 = ladderize(nj(D1),FALSE)
+Ds1 = as.vector(D1)
+tree1 = as.vector(as.dist(cophenetic(theTree1)))
+out.Ds1 = data.frame(Ds1,tree1,diff=Ds1-tree1,pr.ch=NA)
+out.Ds1$sc.diff = scale(out.Ds1$diff,center=FALSE)
+for(i in 1:dim(out.Ds1)[1]){
+  out.Ds1[i,"pr.ch"]=round(abs(out.Ds1[i,"diff"])/max(out.Ds1[i,1:2]),4)
+}
+
+#### All PBT
+D2 = GDIST$GDIST.Pr$Genet.Dist.Pr$Ds
+theTree2 = ladderize(nj(D2),FALSE)
+Ds2 = as.vector(D2)
+tree2 = as.vector(as.dist(cophenetic(theTree2)))
+out.Ds2 = data.frame(Ds2,tree2,diff=Ds2-tree2,pr.ch=NA)
+out.Ds2$sc.diff = scale(out.Ds2$diff,center=FALSE)
+for(i in 1:dim(out.Ds2)[1]){
+  out.Ds2[i,"pr.ch"]=round(abs(out.Ds2[i,"diff"])/max(out.Ds2[i,1:2]),4)
+}
+
+### Summary used in supplementary file
+summary(out.Ds1$pr.ch)
+summary(out.Ds2$pr.ch)
+
+### Figure plot for this parameter (not included in manuscript)
+my.plot(D1,D2,label = expression(D*""[S]~"Pairwise Distance"))
+    
+### Chord distance
+#### Purebred only PBT
+D1 = GDIST$GDIST.PrPB$Genet.Dist.PrPB$Dch
+theTree1 = ladderize(nj(D1),FALSE)
+Ds1 = as.vector(D1)
+tree1 = as.vector(as.dist(cophenetic(theTree1)))
+out.Dch1 = data.frame(Ds1,tree1,diff=Ds1-tree1,pr.ch=NA)
+out.Dch1$sc.diff = scale(out.Dch1$diff,center=FALSE)
+for(i in 1:dim(out.Dch1)[1]){
+  out.Dch1[i,"pr.ch"]=round(abs(out.Dch1[i,"diff"])/max(out.Dch1[i,1:2]),4)
+}
+
+#### All PBT
+D2 = GDIST$GDIST.Pr$Genet.Dist.Pr$Dch
+theTree2 = ladderize(nj(D2),FALSE)
+Ds2 = as.vector(D2)
+tree2 = as.vector(as.dist(cophenetic(theTree2)))
+out.Dch2 = data.frame(Ds2,tree2,diff=Ds2-tree2,pr.ch=NA)
+out.Dch2$sc.diff = scale(out.Dch2$diff,center=FALSE)
+for(i in 1:dim(out.Dch2)[1]){
+  out.Dch2[i,"pr.ch"]=round(abs(out.Dch2[i,"diff"])/max(out.Dch2[i,1:2]),4)
+}
+
+#### Summary used in supplementary file
+summary(out.Dch1$pr.ch)
+summary(out.Dch2$pr.ch)
+
+#### Figure plot for this parameter (not included in manuscript)
+my.plot(D1,D2,label = expression(D*""[CH]~"Pairwise Distance"))
+
+### Ladder's FST
+#### Purebred only PBT
+D1 = GDIST$GDIST.PrPB$Genet.Dist.PrPB$D.Fst
+theTree1 = ladderize(nj(D1),FALSE)
+Ds1 = as.vector(D1)
+tree1 = as.vector(as.dist(cophenetic(theTree1)))
+out.DFst1 = data.frame(Ds1,tree1,diff=Ds1-tree1,pr.ch=NA)
+out.DFst1$sc.diff = scale(out.DFst1$diff,center=FALSE)
+for(i in 1:dim(out.DFst1)[1]){
+  out.DFst1[i,"pr.ch"]=round(abs(out.DFst1[i,"diff"])/max(out.DFst1[i,1:2]),4)
+}
+
+#### All PBT
+D2 = GDIST$GDIST.Pr$Genet.Dist.Pr$D.Fst
+theTree2 = ladderize(nj(D2),FALSE)
+Ds2 = as.vector(D2)
+tree2 = as.vector(as.dist(cophenetic(theTree2)))
+out.DFst2 = data.frame(Ds2,tree2,diff=Ds2-tree2,pr.ch=NA)
+out.DFst2$sc.diff = scale(out.DFst2$diff,center=FALSE)
+for(i in 1:dim(out.DFst2)[1]){
+  out.DFst2[i,"pr.ch"]=round(abs(out.DFst2[i,"diff"])/max(out.DFst2[i,1:2]),4)
+}
+
+#### Summary used in supplementary file
+summary(out.DFst1$pr.ch)
+summary(out.DFst2$pr.ch)
+
+#### FIGURE 6 - Latter's Fst phylo plot
+my.plot(D1,D2,label = expression("Latter's F"*""[ST]~"Pairwise Distance"))
+
+### Nei's FST
+#### Purebred only PBT
+D1 = as.dist(GDIST$GDIST.PrPB$Fst.PrPB$Nei)
+theTree1 = ladderize(nj(D1),FALSE)
+Ds1 = as.vector(D1)
+tree1 = as.vector(as.dist(cophenetic(theTree1)))
+out.FstN1 = data.frame(Ds1,tree1,diff=Ds1-tree1,pr.ch=NA)
+out.FstN1$sc.diff = scale(out.FstN1$diff,center=FALSE)
+for(i in 1:dim(out.FstN1)[1]){
+  out.FstN1[i,"pr.ch"]=round(abs(out.FstN1[i,"diff"])/max(out.FstN1[i,1:2]),4)
+}
+
+#### All PBT
+D2 = as.dist(GDIST$GDIST.Pr$Fst.Pr$Nei)
+theTree2 = ladderize(nj(D2),FALSE)
+Ds2 = as.vector(D2)
+tree2 = as.vector(as.dist(cophenetic(theTree2)))
+out.FstN2 = data.frame(Ds2,tree2,diff=Ds2-tree2,pr.ch=NA)
+out.FstN2$sc.diff = scale(out.FstN2$diff,center=FALSE)
+for(i in 1:dim(out.FstN2)[1]){
+  out.FstN2[i,"pr.ch"]=round(abs(out.FstN2[i,"diff"])/max(out.FstN2[i,1:2]),4)
+}
+
+#### Summary used in supplementary file
+summary(out.FstN1$pr.ch)
+summary(out.FstN2$pr.ch)
+
+#### Figure plot for this parameter (not included in manuscript)
+my.plot(D1,D2,label = expression("Nei's F"*""[ST]~"Pairwise Distance"))
+
+### WC FST
+#### Purebred only PBT
+D1 = as.dist(GDIST$GDIST.PrPB$Fst.PrPB$WC)
+theTree1 = ladderize(nj(D1),FALSE)
+Ds1 = as.vector(D1)
+tree1 = as.vector(as.dist(cophenetic(theTree1)))
+out.FstWC1 = data.frame(Ds1,tree1,diff=Ds1-tree1,pr.ch=NA)
+out.FstWC1$sc.diff = scale(out.FstWC1$diff,center=FALSE)
+for(i in 1:dim(out.FstWC1)[1]){
+  out.FstWC1[i,"pr.ch"]=round(abs(out.FstWC1[i,"diff"])/max(out.FstWC1[i,1:2]),4)
+}
+
+#### All PBT
+D2 = as.dist(GDIST$GDIST.Pr$Fst.Pr$WC)
+theTree2 = ladderize(nj(D2),FALSE)
+Ds2 = as.vector(D2)
+tree2 = as.vector(as.dist(cophenetic(theTree2)))
+out.FstWC2 = data.frame(Ds2,tree2,diff=Ds2-tree2,pr.ch=NA)
+out.FstWC2$sc.diff = scale(out.FstWC2$diff,center=FALSE)
+for(i in 1:dim(out.FstWC2)[1]){
+  out.FstWC2[i,"pr.ch"]=round(abs(out.FstWC2[i,"diff"])/max(out.FstWC2[i,1:2]),4)
+}
+
+#### Summary used in supplementary file
+summary(out.FstWC1$pr.ch)
+summary(out.FstWC2$pr.ch)
+
+#### Figure plot for this parameter (not included in manuscript)
+my.plot(D1,D2,label = expression("WC F"*""[ST]~"Pairwise Distance"))
